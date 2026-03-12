@@ -1,27 +1,40 @@
 /**
  * Dashboard: Chart.js charts and Load data button.
- * Uses DASHBOARD_DATA from server (cost_trend, peak_hours, tool_usage, model_usage, usage_by_role, usage_by_department).
+ * Single main color + lighter shades; no random bright colors.
  */
 (function () {
-    var COLORS = [
-        "#58a6ff",
-        "#3fb950",
-        "#d29922",
-        "#f85149",
-        "#a371f7",
-        "#79c0ff",
-        "#7ee787",
-        "#ffa657",
-    ];
+    var COLORS = {
+        primary: "#3b82f6",
+        primaryLight: "#60a5fa",
+        primaryLighter: "#93c5fd",
+        neutral: "#94a3b8",
+        danger: "#ef4444",
+    };
+    var PIE_PALETTE = [COLORS.primary, COLORS.primaryLight, COLORS.primaryLighter];
+    var GRID_COLOR = "rgba(148,163,184,0.2)";
 
     function chartOptions(opts) {
         var base = {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: "#8b949e" } } },
+            plugins: { legend: { labels: { color: COLORS.neutral } } },
         };
         if (opts && opts.scales) base.scales = opts.scales;
         return base;
+    }
+
+    function scaleOptions(maxRotation) {
+        return {
+            y: {
+                beginAtZero: true,
+                grid: { color: GRID_COLOR },
+                ticks: { color: COLORS.neutral },
+            },
+            x: {
+                grid: { color: GRID_COLOR },
+                ticks: { color: COLORS.neutral, maxRotation: maxRotation || 0 },
+            },
+        };
     }
 
     function costTrendChart() {
@@ -37,14 +50,14 @@
                     {
                         label: "Events",
                         data: data.event_counts,
-                        borderColor: COLORS[0],
-                        backgroundColor: COLORS[0] + "30",
+                        borderColor: COLORS.primary,
+                        backgroundColor: COLORS.primary + "20",
                         fill: true,
                         tension: 0.2,
                     },
                 ],
             },
-            options: chartOptions({ scales: { y: { beginAtZero: true, ticks: { color: "#8b949e" } }, x: { ticks: { color: "#8b949e", maxRotation: 45 } } } }),
+            options: chartOptions({ scales: scaleOptions(45) }),
         });
     }
 
@@ -58,9 +71,9 @@
             type: "bar",
             data: {
                 labels: labels,
-                datasets: [{ label: "Events", data: data.values, backgroundColor: COLORS[1] + "99" }],
+                datasets: [{ label: "Events", data: data.values, backgroundColor: COLORS.primaryLight }],
             },
-            options: chartOptions({ scales: { y: { beginAtZero: true, ticks: { color: "#8b949e" } }, x: { ticks: { color: "#8b949e" } } } }),
+            options: chartOptions({ scales: scaleOptions() }),
         });
     }
 
@@ -69,13 +82,14 @@
         if (!data || !data.labels || !data.labels.length) return;
         var ctx = document.getElementById("chart-tool-usage");
         if (!ctx) return;
+        var colors = data.labels.map(function (_, i) { return PIE_PALETTE[i % PIE_PALETTE.length]; });
         new Chart(ctx.getContext("2d"), {
             type: "bar",
             data: {
                 labels: data.labels,
-                datasets: [{ label: "Events", data: data.values, backgroundColor: COLORS.slice(0, data.labels.length) }],
+                datasets: [{ label: "Events", data: data.values, backgroundColor: colors }],
             },
-            options: chartOptions({ scales: { y: { beginAtZero: true, ticks: { color: "#8b949e" } }, x: { ticks: { color: "#8b949e" } } } }),
+            options: chartOptions({ scales: scaleOptions() }),
         });
     }
 
@@ -84,11 +98,12 @@
         if (!data || !data.labels || !data.labels.length) return;
         var ctx = document.getElementById("chart-model-usage");
         if (!ctx) return;
+        var colors = data.labels.map(function (_, i) { return PIE_PALETTE[i % PIE_PALETTE.length]; });
         new Chart(ctx.getContext("2d"), {
             type: "doughnut",
             data: {
                 labels: data.labels,
-                datasets: [{ data: data.values, backgroundColor: COLORS.slice(0, data.labels.length) }],
+                datasets: [{ data: data.values, backgroundColor: colors }],
             },
             options: chartOptions(),
         });
@@ -114,9 +129,9 @@
             type: "bar",
             data: {
                 labels: labels,
-                datasets: [{ label: "Events", data: values, backgroundColor: COLORS[2] + "99" }],
+                datasets: [{ label: "Events", data: values, backgroundColor: COLORS.primaryLight }],
             },
-            options: chartOptions({ scales: { y: { beginAtZero: true, ticks: { color: "#8b949e" } }, x: { ticks: { color: "#8b949e", maxRotation: 45 } } } }),
+            options: chartOptions({ scales: scaleOptions(45) }),
         });
     }
 

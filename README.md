@@ -149,8 +149,7 @@ Uses paths from config (default `data/raw/telemetry_logs.jsonl` and `data/raw/em
 python main.py
 ```
 
-- **Dashboard:** http://127.0.0.1:8000/  
-- **API docs:** http://127.0.0.1:8000/docs  
+- **Dashboard:** http://127.0.0.1:8000/
 
 The dashboard “Refresh data from files” button runs the legacy loader (flat JSONL/CSV) against the same paths; for the full pipeline (batched/nested JSONL, sessions, daily_metrics), run `python -m scripts.ingest_data` and refresh the page.
 

@@ -17,6 +17,8 @@ def create_app() -> FastAPI:
         title=settings.app_title,
         description="Analytics platform for Claude Code telemetry",
         version="1.0.0",
+        docs_url=None,
+        redoc_url=None,
     )
 
     # Ensure DB tables exist
