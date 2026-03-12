@@ -2,51 +2,132 @@
 {% block title %}Dashboard — Claude Code Telemetry{% endblock %}
 {% block content %}
 <section class="actions">
-    <button type="button" id="load-data" class="btn btn-primary">Load / refresh data from files</button>
+    <button type="button" id="load-data" class="btn btn-primary">Load / refresh data</button>
     <span id="load-status" class="status"></span>
 </section>
 
-<section class="summary-cards">
-    <div class="card">
-        <span class="card-value" id="total-events">{{ summary.total_events }}</span>
-        <span class="card-label">Total events</span>
+<section class="kpi-cards">
+    <div class="kpi-card">
+        <span class="kpi-value" id="kpi-events">{{ metrics.total_events | default(0) | int }}</span>
+        <span class="kpi-label">Total events</span>
     </div>
-    <div class="card">
-        <span class="card-value" id="total-employees">{{ summary.total_employees }}</span>
-        <span class="card-label">Employees</span>
+    <div class="kpi-card">
+        <span class="kpi-value" id="kpi-cost">${{ "%.2f"|format(metrics.estimated_cost_usd | default(0)) }}</span>
+        <span class="kpi-label">Est. cost</span>
     </div>
-    <div class="card">
-        <span class="card-value" id="unique-users">{{ summary.unique_users_with_events }}</span>
-        <span class="card-label">Users with events</span>
+    <div class="kpi-card">
+        <span class="kpi-value" id="kpi-tokens">{{ "{:,}".format(metrics.total_tokens | default(0) | int) }}</span>
+        <span class="kpi-label">Total tokens</span>
     </div>
-    <div class="card">
-        <span class="card-value" id="date-range">{{ summary.date_range.min or '—' }} … {{ summary.date_range.max or '—' }}</span>
-        <span class="card-label">Date range</span>
+    <div class="kpi-card">
+        <span class="kpi-value" id="kpi-users">{{ metrics.active_users | default(0) | int }}</span>
+        <span class="kpi-label">Active users</span>
     </div>
 </section>
 
-<section class="charts">
-    <div class="chart-container">
-        <h2>Events by type</h2>
-        <canvas id="chart-by-type" width="400" height="250"></canvas>
+<section class="charts-section">
+    <div class="chart-card chart-wide">
+        <h2>Daily cost / usage trend</h2>
+        <div class="chart-wrap"><canvas id="chart-cost-trend"></canvas></div>
     </div>
-    <div class="chart-container">
-        <h2>Events over time (last 30 days)</h2>
-        <canvas id="chart-over-time" width="400" height="250"></canvas>
+    <div class="chart-card">
+        <h2>Hourly usage</h2>
+        <div class="chart-wrap"><canvas id="chart-hourly"></canvas></div>
     </div>
-    <div class="chart-container">
-        <h2>Events by department</h2>
-        <canvas id="chart-by-department" width="400" height="250"></canvas>
+    <div class="chart-card">
+        <h2>Tool usage</h2>
+        <div class="chart-wrap"><canvas id="chart-tool-usage"></canvas></div>
     </div>
+    <div class="chart-card">
+        <h2>Model usage</h2>
+        <div class="chart-wrap"><canvas id="chart-model-usage"></canvas></div>
+    </div>
+    <div class="chart-card chart-wide">
+        <h2>Usage by role / practice</h2>
+        <div class="chart-wrap"><canvas id="chart-role-practice"></canvas></div>
+    </div>
+</section>
+
+<section class="tables-section">
+    <div class="table-card">
+        <h2>Top users by cost</h2>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Events</th>
+                        <th>Est. cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in top_users_by_cost %}
+                    <tr>
+                        <td>{{ u.user_id }}</td>
+                        <td>{{ u.name }}</td>
+                        <td>{{ u.department }}</td>
+                        <td>{{ u.event_count }}</td>
+                        <td>${{ "%.2f"|format(u.estimated_cost_usd) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5">No data</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="table-card">
+        <h2>Top tools by failures</h2>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tool</th>
+                        <th>Failures</th>
+                        <th>Successes</th>
+                        <th>Success rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in top_tools_by_failures %}
+                    <tr>
+                        <td>{{ t.tool }}</td>
+                        <td>{{ t.failure_count }}</td>
+                        <td>{{ t.success_count }}</td>
+                        <td>{{ "%.0f"|format(t.success_rate_pct) }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4">No failures</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="insights-section">
+    <h2>Insight summary</h2>
+    <ul class="insights-list">
+        {% for bullet in insights.bullets %}
+        <li>{{ bullet }}</li>
+        {% else %}
+        <li>No insights yet. Load data and refresh.</li>
+        {% endfor %}
+    </ul>
 </section>
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
     window.DASHBOARD_DATA = {
-        byType: {{ by_type | tojson }},
-        overTime: {{ over_time | tojson }},
-        byDepartment: {{ by_department | tojson }}
+        costTrend: {{ cost_trend | tojson }},
+        peakHours: {{ peak_hours | tojson }},
+        toolUsage: {{ tool_usage | tojson }},
+        modelUsage: {{ model_usage | tojson }},
+        usageByRole: {{ usage_by_role | tojson }},
+        usageByDepartment: {{ usage_by_department | tojson }}
     };
 </script>
 <script src="/static/js/dashboard.js"></script>

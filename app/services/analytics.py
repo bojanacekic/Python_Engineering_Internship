@@ -331,6 +331,86 @@ def top_departments_by_usage(db: Session, limit: int = 10, days: Optional[int] =
     ]
 
 
+# ---- Dashboard KPIs (cost/tokens are estimated from duration when not in schema) ----
+
+# Proxy: 1 min duration ≈ 500 tokens, $0.001 per 1k tokens → estimated_cost = total_duration_ms/60000 * 500 * 0.001/1000
+def dashboard_kpis(db: Session, days: int = 30) -> Dict[str, Any]:
+    """Return total_events, estimated_cost (USD), total_tokens (proxy), active_users."""
+    cutoff = _cutoff_date(db, days)
+    q_events = db.query(func.count(TelemetryEvent.id))
+    q_duration = db.query(func.coalesce(func.sum(TelemetryEvent.duration_ms), 0))
+    q_users = db.query(func.count(func.distinct(TelemetryEvent.user_id)))
+    if cutoff:
+        q_events = q_events.filter(TelemetryEvent.timestamp >= cutoff)
+        q_duration = q_duration.filter(TelemetryEvent.timestamp >= cutoff)
+        q_users = q_users.filter(TelemetryEvent.timestamp >= cutoff)
+    total_events = q_events.scalar() or 0
+    total_duration_ms = int(q_duration.scalar() or 0)
+    active_users = q_users.scalar() or 0
+    # Proxy: 1 event ≈ 300 tokens if no duration; else duration_ms/1000 * 60 tokens/sec
+    total_tokens = total_duration_ms // 1000 * 60 if total_duration_ms > 0 else total_events * 300
+    # Estimated cost: $0.002 per 1k tokens
+    estimated_cost_usd = round(total_tokens / 1000 * 0.002, 2)
+    return {
+        "total_events": total_events,
+        "estimated_cost_usd": estimated_cost_usd,
+        "total_tokens": total_tokens,
+        "active_users": active_users,
+    }
+
+
+def top_users_by_cost(db: Session, limit: int = 10, days: Optional[int] = 30) -> List[Dict[str, Any]]:
+    """Top users by estimated cost (duration_ms sum as proxy). Includes name, department, event_count, estimated_cost_usd."""
+    cutoff = _cutoff_date(db, days)
+    subq = (
+        db.query(
+            TelemetryEvent.user_id,
+            func.count(TelemetryEvent.id).label("event_count"),
+            func.coalesce(func.sum(TelemetryEvent.duration_ms), 0).label("duration_ms"),
+        )
+        .group_by(TelemetryEvent.user_id)
+    )
+    if cutoff:
+        subq = subq.filter(TelemetryEvent.timestamp >= cutoff)
+    subq = subq.subquery()
+    q = (
+        db.query(
+            subq.c.user_id,
+            subq.c.event_count,
+            subq.c.duration_ms,
+            Employee.name,
+            Employee.department,
+        )
+        .outerjoin(Employee, Employee.employee_id == subq.c.user_id)
+        .order_by(subq.c.duration_ms.desc())
+        .limit(limit)
+    )
+    rows = q.all()
+    out = []
+    for r in rows:
+        dur_ms = int(r.duration_ms or 0)
+        tokens = dur_ms // 1000 * 60 if dur_ms > 0 else r.event_count * 300
+        cost = round(tokens / 1000 * 0.002, 2)
+        out.append({
+            "user_id": r.user_id,
+            "name": r.name or "—",
+            "department": r.department or "—",
+            "event_count": r.event_count,
+            "estimated_cost_usd": cost,
+        })
+    return out
+
+
+def top_tools_by_failures(db: Session, limit: int = 10, days: Optional[int] = 30) -> List[Dict[str, Any]]:
+    """Top tools by failure count (for table). Sorted by failure_count desc."""
+    rates = tool_success_failure_rates(db, days=days)
+    sorted_rates = sorted([r for r in rates if r.failure_count > 0], key=lambda x: -x.failure_count)
+    return [
+        {"tool": r.tool, "failure_count": r.failure_count, "success_count": r.success_count, "success_rate_pct": r.success_rate_pct}
+        for r in sorted_rates[:limit]
+    ]
+
+
 # ---- Narrative insights ----
 
 def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
