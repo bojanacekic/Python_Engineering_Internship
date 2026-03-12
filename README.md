@@ -61,7 +61,7 @@ No Pandas in the critical path (analytics use SQLAlchemy and in-process aggregat
 │   └── ingest_data.py         # Full pipeline: JSONL + CSV → SQLite, sessions, daily_metrics
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                # FastAPI factory, init_db, routes, /health
+│   ├── main.py                # FastAPI factory, init_db, routes
 │   ├── database.py            # Engine, SessionLocal, Base, get_db, init_db
 │   ├── models/                # TelemetryEvent, Employee, SessionSummary, DailyMetric
 │   ├── schemas/               # Pydantic request/response models
@@ -151,7 +151,6 @@ python main.py
 
 - **Dashboard:** http://127.0.0.1:8000/  
 - **API docs:** http://127.0.0.1:8000/docs  
-- **Health:** http://127.0.0.1:8000/health  
 
 The dashboard “Load / refresh data” button runs the legacy loader (flat JSONL/CSV) against the same paths; for the full pipeline (batched/nested JSONL, sessions, daily_metrics), use `python -m scripts.ingest_data` and refresh the page.
 
@@ -161,8 +160,6 @@ The dashboard “Load / refresh data” button runs the legacy loader (flat JSON
 
 | Method + Path | Description |
 |---------------|-------------|
-| **Health** | |
-| `GET /health` | `{"status": "ok"}` |
 | **Metrics (KPIs)** | |
 | `GET /api/metrics?days=30` | `total_events`, `estimated_cost_usd`, `total_tokens`, `active_users` |
 | **Analytics** (prefix `/api/analytics`, optional `?days=30`) | |

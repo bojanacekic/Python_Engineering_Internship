@@ -1,5 +1,5 @@
 """
-API tests: health, analytics endpoints, load-data.
+API tests: analytics endpoints, dashboard, load-data.
 """
 from datetime import datetime, timedelta
 
@@ -32,13 +32,6 @@ def _add_sample_data(session: Session) -> None:
     )
     session.add(Employee(employee_id="1", name="Test User", email="test@co.com", department="Eng", role="Intern"))
     session.commit()
-
-
-def test_health(client):
-    """Health endpoint returns 200 and status ok."""
-    r = client.get("/health")
-    assert r.status_code == 200
-    assert r.json() == {"status": "ok"}
 
 
 def test_dashboard_returns_html(client):

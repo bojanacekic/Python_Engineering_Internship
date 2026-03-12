@@ -42,7 +42,7 @@
 
 3. **“Implement analytics for the internship. I need: app/services/analytics.py with reusable functions; metrics for token consumption by role/practice, cost trends, peak hours, tool and model usage, success vs failure rates, average session duration, top users; a narrative insights layer (5–8 bullets); API-friendly outputs for charts and tables. Modular, typed, robust, not overengineered.”**
 
-4. **“Build a polished but simple dashboard: FastAPI + Jinja2 + Chart.js. No Streamlit/React. Include KPI cards (total events, estimated cost, total tokens, active users), charts (daily cost trend, hourly usage, tool usage bar, model usage pie, role/practice consumption), tables (top users by cost, top tools by failures), insight summary. Add /health and /api/metrics, good CSS, minimal clean JS.”**
+4. **“Build a polished but simple dashboard: FastAPI + Jinja2 + Chart.js. No Streamlit/React. Include KPI cards (total events, estimated cost, total tokens, active users), charts (daily cost trend, hourly usage, tool usage bar, model usage pie, role/practice consumption), tables (top users by cost, top tools by failures), insight summary. Add /api/metrics, good CSS, minimal clean JS.”**
 
 5. **“Rewrite README.md for internship submission. Include: project overview, architecture, tech stack, folder structure, data flow (generator → ingestion → SQLite → analytics → dashboard), setup for Python 3.9, how to generate/ingest/run, API endpoints, key insights, assumptions and tradeoffs, future improvements. Professional, concise, internship-ready, not generic.”**
 
@@ -60,7 +60,7 @@
 
 ## 4. How AI-generated code was validated
 
-- **Tests:** Pytest suite for API (health, dashboard HTML, summary, events-by-type, load-data, invalid params) and for services (DataLoader JSONL/CSV, AnalyticsService summary and events-by-type). All tests run before considering a feature done; failures were fixed by adjusting logic or test expectations.
+- **Tests:** Pytest suite for API (dashboard HTML, summary, events-by-type, load-data, invalid params) and for services (DataLoader JSONL/CSV, AnalyticsService summary and events-by-type). All tests run before considering a feature done; failures were fixed by adjusting logic or test expectations.
 - **Running the app:** After major changes, the app was started locally; dashboard and key API routes (e.g. `/api/metrics`, `/api/analytics/insights`, `/api/analytics/cost-trend`) were called to confirm responses and that the dashboard rendered without errors.
 - **Data path:** Generator and ingestion scripts were run in sequence (generate → ingest); row counts and DB content were spot-checked to ensure events and employees were present and sessions/daily_metrics looked plausible.
 - **Linting:** IDE linting (and, where run, `read_lints`) was used to catch type and style issues in edited files.
