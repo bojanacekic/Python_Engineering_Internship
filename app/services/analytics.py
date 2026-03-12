@@ -411,6 +411,43 @@ def top_tools_by_failures(db: Session, limit: int = 10, days: Optional[int] = 30
     ]
 
 
+# ---- Cost anomaly detection ----
+
+def _daily_cost_usd(duration_ms: int, event_count: int) -> float:
+    """Estimated cost for one day (same proxy as dashboard_kpis)."""
+    tokens = duration_ms // 1000 * 60 if duration_ms > 0 else event_count * 300
+    return round(tokens / 1000 * 0.002, 2)
+
+
+def cost_anomalies(db: Session, days: int = 30, threshold_pct: float = 30.0) -> List[Dict[str, Any]]:
+    """
+    Days where daily cost exceeds the rolling (previous 7-day) average by more than threshold_pct.
+    Returns list of { date, cost, deviation_percent }.
+    """
+    trend = cost_trend_over_time(db, days=days)
+    if len(trend) < 2:
+        return []
+    daily_costs: List[float] = [
+        _daily_cost_usd(b.total_duration_ms, b.event_count) for b in trend
+    ]
+    anomalies: List[Dict[str, Any]] = []
+    window = 7
+    for i in range(1, len(trend)):
+        start = max(0, i - window)
+        rolling_avg = sum(daily_costs[start:i]) / (i - start) if i > start else 0.0
+        if rolling_avg <= 0:
+            continue
+        cost = daily_costs[i]
+        if cost > rolling_avg * (1 + threshold_pct / 100.0):
+            deviation_pct = round(100.0 * (cost - rolling_avg) / rolling_avg, 1)
+            anomalies.append({
+                "date": trend[i].date,
+                "cost": cost,
+                "deviation_percent": deviation_pct,
+            })
+    return anomalies
+
+
 # ---- Insights (delegate to insights module) ----
 
 def get_insights(db: Session, days: int = 30) -> NarrativeInsights:
@@ -428,6 +465,7 @@ def get_insights(db: Session, days: int = 30) -> NarrativeInsights:
     trend_buckets = cost_trend_over_time(db, days=days)
     top_users_list = top_users_by_cost(db, limit=5, days=days)
 
+    anomalies_list = cost_anomalies(db, days=days, threshold_pct=30.0)
     metrics: Dict[str, Any] = {
         "total_events": kpis.get("total_events", 0),
         "active_users": kpis.get("active_users", 0),
@@ -452,6 +490,7 @@ def get_insights(db: Session, days: int = 30) -> NarrativeInsights:
         ],
         "avg_session_duration": average_session_duration(db, days=days),
         "top_users": top_users_list,
+        "cost_anomalies": anomalies_list,
     }
     bullets = insights_module.generate_insights(metrics)
     return NarrativeInsights(

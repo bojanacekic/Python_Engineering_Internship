@@ -102,5 +102,14 @@ def generate_insights(metrics: Dict[str, Any]) -> List[str]:
     if cost is not None and cost > 0:
         bullets.append(f"Estimated period cost: ${cost:.2f}.")
 
-    # Cap at 8
-    return bullets[:8]
+    # Cost anomalies (days >30% above rolling average)
+    anomalies = metrics.get("cost_anomalies") or []
+    for a in anomalies[:3]:
+        date_str = a.get("date", "?")
+        cost_val = a.get("cost", 0)
+        dev = a.get("deviation_percent", 0)
+        bullets.append(
+            f"Cost anomaly on {date_str}: ${cost_val:.2f} ({dev:+.0f}% above rolling average)."
+        )
+
+    return bullets[:10]
