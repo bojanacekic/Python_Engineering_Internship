@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Claude Code Telemetry{% endblock %}
+{% block content %}
+<section class="actions">
+    <button type="button" id="load-data" class="btn btn-primary">Load / refresh data from files</button>
+    <span id="load-status" class="status"></span>
+</section>
+
+<section class="summary-cards">
+    <div class="card">
+        <span class="card-value" id="total-events">{{ summary.total_events }}</span>
+        <span class="card-label">Total events</span>
+    </div>
+    <div class="card">
+        <span class="card-value" id="total-employees">{{ summary.total_employees }}</span>
+        <span class="card-label">Employees</span>
+    </div>
+    <div class="card">
+        <span class="card-value" id="unique-users">{{ summary.unique_users_with_events }}</span>
+        <span class="card-label">Users with events</span>
+    </div>
+    <div class="card">
+        <span class="card-value" id="date-range">{{ summary.date_range.min or '—' }} … {{ summary.date_range.max or '—' }}</span>
+        <span class="card-label">Date range</span>
+    </div>
+</section>
+
+<section class="charts">
+    <div class="chart-container">
+        <h2>Events by type</h2>
+        <canvas id="chart-by-type" width="400" height="250"></canvas>
+    </div>
+    <div class="chart-container">
+        <h2>Events over time (last 30 days)</h2>
+        <canvas id="chart-over-time" width="400" height="250"></canvas>
+    </div>
+    <div class="chart-container">
+        <h2>Events by department</h2>
+        <canvas id="chart-by-department" width="400" height="250"></canvas>
+    </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    window.DASHBOARD_DATA = {
+        byType: {{ by_type | tojson }},
+        overTime: {{ over_time | tojson }},
+        byDepartment: {{ by_department | tojson }}
+    };
+</script>
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

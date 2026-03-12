@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Claude Code Telemetry Analytics{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="header">
+        <h1>Claude Code Telemetry Analytics</h1>
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/docs" target="_blank">API Docs</a>
+        </nav>
+    </header>
+    <main class="main">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="footer">
+        <p>Internship project — Python 3.9 · FastAPI · SQLAlchemy · Chart.js</p>
+    </footer>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
