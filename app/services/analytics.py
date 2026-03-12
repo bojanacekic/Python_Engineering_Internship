@@ -411,100 +411,58 @@ def top_tools_by_failures(db: Session, limit: int = 10, days: Optional[int] = 30
     ]
 
 
-# ---- Narrative insights ----
+# ---- Insights (delegate to insights module) ----
 
-def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
+def get_insights(db: Session, days: int = 30) -> NarrativeInsights:
     """
-    Generate 5-8 plain-English bullet insights from current data.
-    Business- and developer-friendly summaries.
+    Produce 5–8 narrative insights from computed metrics via the insights module.
+    Suitable for the executive dashboard "Key Insights" section.
     """
-    bullets: List[str] = []
-    cutoff = _cutoff_date(db, days)
+    from app.services import insights as insights_module
 
-    total_events = db.query(func.count(TelemetryEvent.id))
-    if cutoff:
-        total_events = total_events.filter(TelemetryEvent.timestamp >= cutoff)
-    total_events = total_events.scalar() or 0
-
-    unique_users = db.query(func.count(func.distinct(TelemetryEvent.user_id)))
-    if cutoff:
-        unique_users = unique_users.filter(TelemetryEvent.timestamp >= cutoff)
-    unique_users = unique_users.scalar() or 0
-
-    if total_events > 0:
-        bullets.append(
-            f"{total_events:,} events recorded from {unique_users} active users in the selected period."
-        )
-
-    by_role = usage_by_role(db, days=days)
-    if by_role:
-        top_role = max(by_role, key=lambda x: x.event_count)
-        bullets.append(
-            f"Role \"{top_role.dimension_value}\" shows the highest usage: {top_role.event_count:,} events "
-            f"across {top_role.user_count} users."
-        )
-
-    by_dept = usage_by_department(db, days=days)
-    if by_dept:
-        top_dept = max(by_dept, key=lambda x: x.event_count)
-        bullets.append(
-            f"Department \"{top_dept.dimension_value}\" is the most active with {top_dept.event_count:,} events."
-        )
-
-    tools = tool_usage_distribution(db, days=days)
-    if tools:
-        top_tool = tools[0]
-        pct = (100.0 * top_tool.count / total_events) if total_events else 0
-        bullets.append(
-            f"Most used feature is \"{top_tool.label}\": {top_tool.count:,} events ({pct:.0f}% of total)."
-        )
-
-    rates = tool_success_failure_rates(db, days=days)
-    if rates:
-        lowest = min(rates, key=lambda x: x.success_rate_pct)
-        if lowest.failure_count > 0:
-            bullets.append(
-                f"\"{lowest.tool}\" has the lowest success rate ({lowest.success_rate_pct:.0f}%) "
-                f"with {lowest.failure_count} failures."
-            )
-
-    avg_dur = average_session_duration(db, days=days)
-    if avg_dur is not None and avg_dur > 0:
-        bullets.append(f"Average session duration: {avg_dur:.1f} seconds.")
-
-    hours = peak_usage_hours(db, days=days)
-    if hours:
-        peak = max(hours, key=lambda x: x.count)
-        bullets.append(f"Peak activity occurs at {peak.hour}:00 UTC ({peak.count} events).")
-
-    trend = cost_trend_over_time(db, days=days)
-    if len(trend) >= 2:
-        recent = trend[-1].event_count
-        prev = trend[-2].event_count
-        if prev > 0:
-            chg = 100.0 * (recent - prev) / prev
-            bullets.append(
-                f"Most recent day: {recent:,} events ({chg:+.0f}% vs previous day)."
-            )
-    if len(trend) >= 8:
-        last_day = trend[-1].event_count
-        prev_7_avg = sum(t.event_count for t in trend[-8:-1]) / 7.0
-        if prev_7_avg > 0 and last_day >= 2.0 * prev_7_avg:
-            bullets.append(
-                f"Usage spike detected: latest day ({last_day:,} events) is at least 2× the prior 7-day average."
-            )
     kpis = dashboard_kpis(db, days=days)
-    if kpis.get("estimated_cost_usd") is not None and kpis["estimated_cost_usd"] > 0:
-        bullets.append(
-            f"Estimated period cost (usage-based): ${kpis['estimated_cost_usd']:.2f}."
-        )
+    peak_api = peak_usage_hours_for_api(db, days=days)
+    model_api = model_usage_for_api(db, days=days)
+    dept_api = usage_by_department_for_api(db, days=days)
+    tool_api = tool_usage_for_api(db, days=days)
+    trend_buckets = cost_trend_over_time(db, days=days)
+    top_users_list = top_users_by_cost(db, limit=5, days=days)
 
-    # Cap at 8
-    bullets = bullets[:8]
+    metrics: Dict[str, Any] = {
+        "total_events": kpis.get("total_events", 0),
+        "active_users": kpis.get("active_users", 0),
+        "estimated_cost_usd": kpis.get("estimated_cost_usd"),
+        "days": days,
+        "peak_hours": peak_api.get("buckets", []),
+        "model_distribution": [
+            {"label": l, "count": v}
+            for l, v in zip(model_api.get("labels", []), model_api.get("values", []))
+        ],
+        "by_dept": [
+            {"dimension_value": d["department"], "event_count": d["event_count"]}
+            for d in dept_api
+        ],
+        "tool_distribution": [
+            {"label": l, "count": v}
+            for l, v in zip(tool_api.get("labels", []), tool_api.get("values", []))
+        ],
+        "trend": [
+            {"date": b.date, "event_count": b.event_count}
+            for b in trend_buckets
+        ],
+        "avg_session_duration": average_session_duration(db, days=days),
+        "top_users": top_users_list,
+    }
+    bullets = insights_module.generate_insights(metrics)
     return NarrativeInsights(
         bullets=bullets,
         generated_at=datetime.utcnow().isoformat() + "Z",
     )
+
+
+def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
+    """Generate 5-8 plain-English bullet insights. Delegates to get_insights()."""
+    return get_insights(db, days=days)
 
 
 # ---- Serialization for API ----

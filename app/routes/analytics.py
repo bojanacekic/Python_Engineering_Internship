@@ -164,5 +164,5 @@ def get_top_departments(limit: int = 10, days: Optional[int] = 30, db: Session =
 def get_narrative_insights(days: int = 30, db: Session = Depends(get_db)):
     """5-8 auto-generated bullet insights in plain English."""
     _days_param(days)
-    ni = analytics_module.narrative_insights(db, days=days)
+    ni = analytics_module.get_insights(db, days=days)
     return NarrativeInsightsResponse(bullets=ni.bullets, generated_at=ni.generated_at)

@@ -44,7 +44,7 @@ def dashboard(
     usage_by_department = analytics_module.usage_by_department_for_api(db, days=days)
     top_users_by_cost = analytics_module.top_users_by_cost(db, limit=10, days=days)
     top_tools_by_failures = analytics_module.top_tools_by_failures(db, limit=10, days=days)
-    insights = analytics_module.narrative_insights(db, days=days)
+    insights = analytics_module.get_insights(db, days=days)
     return templates.TemplateResponse(
         request,
         "dashboard.html",
