@@ -12,19 +12,22 @@ A clean, internship-quality analytics platform for Claude Code telemetry. Built 
 ```
 .
 ├── main.py                 # Application entrypoint
-├── generate_fake_data.py   # Generates telemetry_logs.jsonl and employees.csv
+├── generate_fake_data.py   # Backward-compat wrapper → scripts/generate_data (writes data/raw/)
 ├── config/                 # Configuration
+├── scripts/
+│   ├── generate_data.py    # Generate telemetry_logs.jsonl + employees.csv into data/raw/
+│   └── ingest_data.py      # Run full ingestion pipeline (JSONL + CSV → SQLite, sessions, daily_metrics)
 ├── app/
 │   ├── main.py             # FastAPI application
 │   ├── database.py         # SQLAlchemy engine and session
-│   ├── models/             # SQLAlchemy models
+│   ├── models/             # SQLAlchemy models (telemetry_events, employees, sessions_summary, daily_metrics)
 │   ├── schemas/            # Pydantic schemas
-│   ├── services/           # Business logic (data loading, analytics)
+│   ├── services/           # Data loading, ingestion pipeline, analytics
 │   ├── routes/             # API and page routes
 │   ├── templates/          # Jinja2 HTML templates
 │   └── static/             # CSS and JS (Chart.js via CDN)
 ├── tests/                  # Pytest tests
-└── data/                   # Optional: generated data (gitignored except .gitkeep)
+└── data/raw/               # Generated and ingested data (gitignored)
 ```
 
 ## Quick Start
@@ -43,28 +46,33 @@ A clean, internship-quality analytics platform for Claude Code telemetry. Built 
    pip install -r requirements.txt
    ```
 
-3. **Generate sample data:**
+3. **Generate sample data** (writes to `data/raw/`):
 
    ```bash
    python generate_fake_data.py
+   # or: python -m scripts.generate_data
    ```
 
-   This creates `telemetry_logs.jsonl` and `employees.csv` in the project root (or in `data/` if you prefer—adjust paths in `config/settings.py`).
+   This creates `data/raw/telemetry_logs.jsonl` and `data/raw/employees.csv`.
 
-4. **Run the application:**
+4. **Ingest into the database:**
+
+   ```bash
+   python -m scripts.ingest_data
+   ```
+
+   This loads employees and telemetry (supports flat JSONL, batched `logEvents`, and nested JSON `message` fields), joins by email when possible, and rebuilds `sessions_summary` and `daily_metrics`.
+
+5. **Run the application:**
 
    ```bash
    python main.py
    ```
 
-   The API and dashboard are available at:
-
    - **Dashboard:** http://127.0.0.1:8000/
    - **API docs:** http://127.0.0.1:8000/docs
 
-5. **Load data into the database (first run):**
-
-   - Open the dashboard; the app can auto-load from JSONL/CSV on startup if files exist, or call the load endpoint once (see API docs).
+   You can also use the dashboard "Load / refresh data" button to run the legacy loader (flat JSONL/CSV); for full pipeline use `python -m scripts.ingest_data`.
 
 ## Features
 

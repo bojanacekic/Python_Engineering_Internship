@@ -18,9 +18,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db() -> None:
     """Create all tables if they do not exist."""
-    # Import models so they register with Base.metadata (avoids circular import)
     from app.models import telemetry as _telemetry  # noqa: F401
     from app.models import employee as _employee   # noqa: F401
+    from app.models import sessions_summary as _sessions  # noqa: F401
+    from app.models import daily_metrics as _daily  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
 

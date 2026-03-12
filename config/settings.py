@@ -18,9 +18,10 @@ class Settings(BaseSettings):
     # Database
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'telemetry.db'}"
 
-    # Data file paths (relative to project root or absolute)
-    telemetry_logs_path: str = str(PROJECT_ROOT / "telemetry_logs.jsonl")
-    employees_csv_path: str = str(PROJECT_ROOT / "employees.csv")
+    # Data file paths: default to data/raw/
+    data_raw_dir: Path = PROJECT_ROOT / "data" / "raw"
+    telemetry_logs_path: str = str(PROJECT_ROOT / "data" / "raw" / "telemetry_logs.jsonl")
+    employees_csv_path: str = str(PROJECT_ROOT / "data" / "raw" / "employees.csv")
 
     # App
     debug: bool = False

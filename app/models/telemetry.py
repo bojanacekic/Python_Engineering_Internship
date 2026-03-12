@@ -13,6 +13,7 @@ class TelemetryEvent(Base):
     event_id = Column(String(64), unique=True, nullable=False, index=True)
     timestamp = Column(DateTime, nullable=False, index=True)
     user_id = Column(String(64), nullable=False, index=True)
+    employee_id = Column(Integer, nullable=True, index=True)  # FK to employees when resolved by email
     event_type = Column(String(64), nullable=False, index=True)
     duration_ms = Column(Integer, nullable=True)
     error_code = Column(String(64), nullable=True)
