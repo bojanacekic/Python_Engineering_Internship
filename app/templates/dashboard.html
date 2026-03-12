@@ -4,6 +4,12 @@
 <section class="actions">
     <button type="button" id="load-data" class="btn btn-primary">Load / refresh data</button>
     <span id="load-status" class="status"></span>
+    <span class="filter-label">Date range:</span>
+    <nav class="filter-days">
+        {% for d in allowed_days %}
+        <a href="?days={{ d }}" class="filter-link{% if days == d %} active{% endif %}">Last {{ d }} days</a>
+        {% endfor %}
+    </nav>
 </section>
 
 <section class="kpi-cards">

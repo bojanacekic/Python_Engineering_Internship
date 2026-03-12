@@ -108,6 +108,34 @@ body {
     color: var(--success);
 }
 
+.filter-label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-left: 1rem;
+}
+
+.filter-days {
+    display: inline-flex;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
+}
+
+.filter-days .filter-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.filter-days .filter-link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+.filter-days .filter-link.active {
+    font-weight: 600;
+    color: var(--text);
+}
+
 /* KPI cards */
 .kpi-cards {
     display: grid;

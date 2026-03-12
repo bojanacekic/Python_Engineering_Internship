@@ -1,10 +1,10 @@
-"""SQLAlchemy model for employees."""
+"""SQLAlchemy model for employees. Indexes on employee_id and department support joins and usage-by-department analytics."""
 from sqlalchemy import Column, Integer, String
 from app.database import Base
 
 
 class Employee(Base):
-    """Employee dimension table."""
+    """Employee dimension table (from CSV). Joined to telemetry by employee_id or email."""
 
     __tablename__ = "employees"
 

@@ -1,6 +1,6 @@
 # Presentation Outline — Claude Code Telemetry Analytics
 
-**Format:** 5 slides | **Audience:** Internship evaluation / stakeholders
+**Format:** 5 slides (can be condensed to 3: combine Problem+Architecture, Analytics+Findings, Conclusion) | **Audience:** Internship evaluation / stakeholders
 
 ---
 

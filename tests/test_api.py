@@ -98,3 +98,14 @@ def test_load_data_no_files(client):
     data = r.json()
     assert "telemetry_loaded" in data
     assert "employees_loaded" in data
+
+
+def test_api_metrics(client):
+    """GET /api/metrics returns 200 and expected KPI keys."""
+    r = client.get("/api/metrics")
+    assert r.status_code == 200
+    data = r.json()
+    assert "total_events" in data
+    assert "estimated_cost_usd" in data
+    assert "total_tokens" in data
+    assert "active_users" in data

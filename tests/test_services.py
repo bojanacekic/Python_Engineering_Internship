@@ -14,8 +14,12 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models.telemetry import TelemetryEvent
 from app.models.employee import Employee
+from app.models.sessions_summary import SessionSummary
+from app.models.daily_metrics import DailyMetric
 from app.services.data_loader import DataLoader
 from app.services.analytics_service import AnalyticsService
+from app.services.ingestion import run_ingestion
+from app.services import analytics as analytics_module
 
 
 @pytest.fixture
@@ -119,3 +123,66 @@ def test_analytics_events_by_type(session):
     by_type = svc.get_events_by_type()
     assert by_type["session_start"] == 2
     assert by_type["error"] == 1
+
+
+def test_ingestion_run(session):
+    """run_ingestion returns dict with expected keys and does not raise."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+        f.write(json.dumps({
+            "event_id": "ing1",
+            "timestamp": "2024-01-15T10:00:00Z",
+            "user_id": "1",
+            "event_type": "session_start",
+        }) + "\n")
+        jsonl_path = f.name
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", newline="", delete=False) as f:
+        w = csv.DictWriter(f, fieldnames=["employee_id", "name", "email", "department", "role"])
+        w.writeheader()
+        w.writerow({"employee_id": "1", "name": "A", "email": "a@a.com", "department": "D", "role": "R"})
+        csv_path = f.name
+    try:
+        result = run_ingestion(
+            session,
+            telemetry_path=jsonl_path,
+            employees_path=csv_path,
+            rebuild_sessions=True,
+            rebuild_daily_metrics=True,
+        )
+        assert isinstance(result, dict)
+        assert "employees_loaded" in result
+        assert "telemetry_loaded" in result
+        assert "telemetry_skipped" in result
+        assert "telemetry_errors" in result
+        assert "sessions_inserted" in result
+        assert "daily_metrics_inserted" in result
+        assert result["telemetry_loaded"] >= 0
+    finally:
+        Path(jsonl_path).unlink(missing_ok=True)
+        Path(csv_path).unlink(missing_ok=True)
+
+
+def test_dashboard_kpis_keys(session):
+    """dashboard_kpis returns expected KPI keys."""
+    session.add(
+        TelemetryEvent(event_id="k1", timestamp=datetime.utcnow(), user_id="1", event_type="session_start")
+    )
+    session.commit()
+    kpis = analytics_module.dashboard_kpis(session, days=30)
+    assert "total_events" in kpis
+    assert "estimated_cost_usd" in kpis
+    assert "total_tokens" in kpis
+    assert "active_users" in kpis
+
+
+def test_narrative_insights_structure(session):
+    """narrative_insights returns bullets list and generated_at."""
+    session.add(
+        TelemetryEvent(event_id="n1", timestamp=datetime.utcnow(), user_id="1", event_type="session_start")
+    )
+    session.commit()
+    ni = analytics_module.narrative_insights(session, days=30)
+    assert hasattr(ni, "bullets")
+    assert isinstance(ni.bullets, list)
+    assert len(ni.bullets) <= 8
+    assert hasattr(ni, "generated_at")
+    assert isinstance(ni.generated_at, str)

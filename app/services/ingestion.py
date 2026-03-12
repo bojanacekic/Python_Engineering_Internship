@@ -1,7 +1,11 @@
 """
-Ingestion pipeline: read telemetry_logs.jsonl (flat or batched logEvents),
-safely decode nested JSON message fields, normalize records, load employees.csv,
-join by email when possible, and store in SQLite. Builds sessions_summary and daily_metrics.
+Ingestion pipeline: read raw telemetry JSON/JSONL and employee CSV; clean and normalize;
+store in SQLite; build session and daily aggregates.
+
+- Supports flat JSONL, batched logEvents, and nested JSON message fields. Malformed rows
+  are logged and skipped; ingestion is rerunnable (deduplication by event_id and employee_id).
+- CSV input is validated with safe defaults for missing columns. Joins telemetry to employees
+  by email when present, else by user_id. Includes error handling and structured logging.
 """
 import csv
 import json
@@ -138,9 +142,13 @@ def _iter_telemetry_events(path: Path, line_num_ref: List[int]) -> List[Dict[str
     return out
 
 
+REQUIRED_CSV_FIELDS = ("employee_id", "name", "email", "department", "role")
+
+
 def load_employees_into_db(db: Session, path: Optional[Path] = None) -> Tuple[Dict[str, int], Dict[str, int]]:
     """
-    Load employees from CSV into DB (skip duplicates). Return email -> employees.id, employee_id -> employees.id.
+    Load employees from CSV into DB (skip duplicates). Uses safe defaults for missing columns.
+    Returns email -> employees.id, employee_id -> employees.id. Rerunnable: skips existing employee_id.
     """
     path = path or Path(settings.employees_csv_path)
     email_to_id: Dict[str, int] = {}
@@ -148,21 +156,32 @@ def load_employees_into_db(db: Session, path: Optional[Path] = None) -> Tuple[Di
     if not path.exists():
         logger.warning("Employees file not found: %s", path)
         return email_to_id, user_id_to_id
-    existing = {row[0]: row[1] for row in db.query(Employee.employee_id, Employee.id).all()}
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    try:
+        existing = {row[0]: row[1] for row in db.query(Employee.employee_id, Employee.id).all()}
+    except Exception as e:
+        logger.exception("DB query failed when loading employees: %s", e)
+        return email_to_id, user_id_to_id
+    try:
+        f = open(path, "r", encoding="utf-8", newline="")
+    except OSError as e:
+        logger.exception("Could not open employees CSV %s: %s", path, e)
+        return email_to_id, user_id_to_id
+    with f:
         reader = csv.DictReader(f)
+        if not reader.fieldnames or not all(col in (reader.fieldnames or []) for col in REQUIRED_CSV_FIELDS):
+            logger.warning("CSV missing expected columns (expected at least: %s)", REQUIRED_CSV_FIELDS)
         for row in reader:
-            eid = row.get("employee_id")
+            eid = (row.get("employee_id") or "").strip()
             if not eid or eid in existing:
                 if eid:
                     user_id_to_id[eid] = existing[eid]
                 continue
             emp = Employee(
                 employee_id=eid,
-                name=row.get("name", ""),
-                email=row.get("email", ""),
-                department=row.get("department", ""),
-                role=row.get("role", ""),
+                name=(row.get("name") or "").strip()[:256],
+                email=(row.get("email") or "").strip()[:256],
+                department=(row.get("department") or "").strip()[:128],
+                role=(row.get("role") or "").strip()[:64],
             )
             db.add(emp)
             db.flush()
@@ -171,13 +190,21 @@ def load_employees_into_db(db: Session, path: Optional[Path] = None) -> Tuple[Di
             email = (emp.email or "").strip()
             if email:
                 email_to_id[email] = emp.id
-        db.commit()
+        try:
+            db.commit()
+        except Exception as e:
+            logger.exception("Commit failed after loading employees: %s", e)
+            db.rollback()
+            return email_to_id, user_id_to_id
     # Reload email_to_id from DB for all employees (in case we only had some new)
-    for email, pk in db.query(Employee.email, Employee.id).filter(Employee.email.isnot(None)).all():
-        if email:
-            email_to_id[email.strip()] = pk
-    for eid, pk in db.query(Employee.employee_id, Employee.id).all():
-        user_id_to_id[str(eid)] = pk
+    try:
+        for email, pk in db.query(Employee.email, Employee.id).filter(Employee.email.isnot(None)).all():
+            if email:
+                email_to_id[email.strip()] = pk
+        for eid, pk in db.query(Employee.employee_id, Employee.id).all():
+            user_id_to_id[str(eid)] = pk
+    except Exception as e:
+        logger.exception("DB query failed when building employee lookups: %s", e)
     return email_to_id, user_id_to_id
 
 
@@ -366,7 +393,7 @@ def run_ingestion(
         db.commit()
         daily_metrics_inserted = _build_daily_metrics(db)
 
-    return {
+    result = {
         "employees_loaded": emp_count,
         "telemetry_loaded": telemetry_loaded,
         "telemetry_skipped": telemetry_skipped,
@@ -374,3 +401,13 @@ def run_ingestion(
         "sessions_inserted": sessions_inserted,
         "daily_metrics_inserted": daily_metrics_inserted,
     }
+    logger.info(
+        "Ingestion complete: employees=%s, telemetry_loaded=%s, skipped=%s, errors=%s, sessions=%s, daily_metrics=%s",
+        result["employees_loaded"],
+        result["telemetry_loaded"],
+        result["telemetry_skipped"],
+        result["telemetry_errors"],
+        result["sessions_inserted"],
+        result["daily_metrics_inserted"],
+    )
+    return result

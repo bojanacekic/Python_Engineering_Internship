@@ -1,11 +1,11 @@
-"""SQLAlchemy model for daily aggregated metrics."""
+"""SQLAlchemy model for daily aggregated metrics. Indexes on metric_date and metric_name support trend and dashboard queries."""
 from datetime import date
 from sqlalchemy import Column, Date, Integer, String
 from app.database import Base
 
 
 class DailyMetric(Base):
-    """One row per (date, metric_name). metric_name: total_events, total_sessions, unique_users."""
+    """One row per (date, metric_name). metric_name: total_events, total_sessions, unique_users. Rebuilt on each ingestion run."""
 
     __tablename__ = "daily_metrics"
 

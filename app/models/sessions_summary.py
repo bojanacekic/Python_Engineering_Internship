@@ -1,11 +1,11 @@
-"""SQLAlchemy model for session-level aggregates."""
+"""SQLAlchemy model for session-level aggregates. Indexes on user_id and session_start_ts support per-user and daily session analytics."""
 from datetime import datetime
 from sqlalchemy import Column, DateTime, Float, Integer, String
 from app.database import Base
 
 
 class SessionSummary(Base):
-    """One row per session: same user, bounded by session_start or 30-min gap."""
+    """One row per session: same user, bounded by session_start or 30-min gap. Rebuilt on each ingestion run."""
 
     __tablename__ = "sessions_summary"
 

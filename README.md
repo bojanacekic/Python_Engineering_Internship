@@ -98,7 +98,7 @@ No Pandas in the critical path (analytics use SQLAlchemy and in-process aggregat
    Reusable, typed functions over the DB: KPIs (events, estimated cost, token proxy, active users), usage by role/department, cost/usage trend over time, peak hours, tool/model distribution, tool success/failure rates, average session duration, top users by cost, top tools by failures, and narrative insights (5–8 bullets).
 
 5. **Dashboard**  
-   Server-rendered Jinja2 page: KPIs, charts (daily trend, hourly, tool bar, model doughnut, role/practice bar), tables (top users by cost, top tools by failures), and insight summary. Data injected as `DASHBOARD_DATA`; Chart.js renders client-side.
+   Server-rendered Jinja2 page: KPIs, charts (daily trend, hourly, tool bar, model doughnut, role/practice bar), tables (top users by cost, top tools by failures), and insight summary. Date-range filter: `?days=7`, `?days=30`, or `?days=90`. Data injected as `DASHBOARD_DATA`; Chart.js renders client-side.
 
 ---
 
@@ -192,7 +192,7 @@ The dashboard “Load / refresh data” button runs the legacy loader (flat JSON
 - **Who uses it:** Usage by role (Intern, Junior, Mid, Senior, Lead) and by department (practice); top users and top departments.
 - **Reliability:** Per-tool success vs failure and success rate; top tools by failure count.
 - **Sessions:** Average session duration; session and daily aggregates in DB.
-- **Narrative:** Auto-generated 5–8 bullet insights (totals, top role/department/tool, lowest success rate, avg session duration, peak hour, latest-day change).
+- **Narrative:** Auto-generated 5–8 bullet insights (totals, top role/department/tool, lowest success rate, avg session duration, peak hour, latest-day change, unusual spikes when applicable, estimated cost for stakeholders).
 
 ---
 

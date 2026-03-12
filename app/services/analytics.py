@@ -486,6 +486,20 @@ def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
             bullets.append(
                 f"Latest day had {recent:,} events ({chg:+.0f}% vs previous day)."
             )
+    # Unusual spike: last day > 2x average of previous 7 days
+    if len(trend) >= 8:
+        last_day = trend[-1].event_count
+        prev_7_avg = sum(t.event_count for t in trend[-8:-1]) / 7.0
+        if prev_7_avg > 0 and last_day >= 2.0 * prev_7_avg:
+            bullets.append(
+                f"Unusual spike: latest day ({last_day:,} events) is at least 2x the prior 7-day average."
+            )
+    # Stakeholder-oriented: estimated cost
+    kpis = dashboard_kpis(db, days=days)
+    if kpis.get("estimated_cost_usd") is not None and kpis["estimated_cost_usd"] > 0:
+        bullets.append(
+            f"Estimated cost over the period (usage proxy): ${kpis['estimated_cost_usd']:.2f}."
+        )
 
     # Cap at 8
     bullets = bullets[:8]

@@ -2,8 +2,9 @@
 Page routes: dashboard and index. Serves Jinja2-rendered HTML.
 """
 from pathlib import Path
+from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -16,11 +17,24 @@ router = APIRouter()
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+ALLOWED_DAYS = (7, 30, 90)
+
+
+def _coerce_days(days: Optional[int]) -> int:
+    """Return 30 if days is None or not in ALLOWED_DAYS; otherwise return days."""
+    if days is not None and days in ALLOWED_DAYS:
+        return days
+    return 30
+
 
 @router.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    """Render the main analytics dashboard: KPIs, charts, tables, insights."""
-    days = 30
+def dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    days: Optional[int] = Query(None, description="Time window: 7, 30, or 90 days"),
+):
+    """Render the main analytics dashboard: KPIs, charts, tables, insights. Supports ?days=7|30|90."""
+    days = _coerce_days(days)
     metrics_kpis = analytics_module.dashboard_kpis(db, days=days)
     cost_trend = analytics_module.cost_trend_for_api(db, days=days)
     peak_hours = analytics_module.peak_usage_hours_for_api(db, days=days)
@@ -36,6 +50,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "dashboard.html",
         {
             "request": request,
+            "days": days,
+            "allowed_days": ALLOWED_DAYS,
             "metrics": metrics_kpis,
             "cost_trend": cost_trend,
             "peak_hours": peak_hours,
