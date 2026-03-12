@@ -1,6 +1,6 @@
 # Claude Code Telemetry Analytics Platform
 
-End-to-end analytics platform for Claude Code telemetry: generate sample data, ingest into SQLite, run analytics, and serve a stakeholder-facing dashboard. Built for Python 3.9 with a minimal, production-style stack (FastAPI, SQLAlchemy, Jinja2, Chart.js)—no Streamlit, Dash, or React.
+End-to-end analytics platform for Claude Code telemetry: generate sample data, ingest into SQLite, run analytics, and serve a stakeholder-facing dashboard. Built for Python 3.9 with a minimal, production-style stack (FastAPI, SQLAlchemy, Jinja2, Chart.js)—no Streamlit, Dash, or React. Suitable for engineering and product teams evaluating usage, cost, and reliability.
 
 ---
 
@@ -152,7 +152,7 @@ python main.py
 - **Dashboard:** http://127.0.0.1:8000/  
 - **API docs:** http://127.0.0.1:8000/docs  
 
-The dashboard “Load / refresh data” button runs the legacy loader (flat JSONL/CSV) against the same paths; for the full pipeline (batched/nested JSONL, sessions, daily_metrics), use `python -m scripts.ingest_data` and refresh the page.
+The dashboard “Refresh data from files” button runs the legacy loader (flat JSONL/CSV) against the same paths; for the full pipeline (batched/nested JSONL, sessions, daily_metrics), run `python -m scripts.ingest_data` and refresh the page.
 
 ---
 
@@ -235,4 +235,4 @@ Tests use an in-memory SQLite DB and override the app’s DB dependency so no fi
 
 ---
 
-*Internship project — Claude Code Telemetry Analytics. Python 3.9, FastAPI, SQLAlchemy, Jinja2, Chart.js.*
+*Claude Code Telemetry Analytics — Python 3.9 · FastAPI · SQLAlchemy · Jinja2 · Chart.js*

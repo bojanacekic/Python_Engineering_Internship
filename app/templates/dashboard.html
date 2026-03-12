@@ -2,9 +2,9 @@
 {% block title %}Dashboard — Claude Code Telemetry{% endblock %}
 {% block content %}
 <section class="actions">
-    <button type="button" id="load-data" class="btn btn-primary">Load / refresh data</button>
+    <button type="button" id="load-data" class="btn btn-primary">Refresh data from files</button>
     <span id="load-status" class="status"></span>
-    <span class="filter-label">Date range:</span>
+    <span class="filter-label">Time window:</span>
     <nav class="filter-days">
         {% for d in allowed_days %}
         <a href="?days={{ d }}" class="filter-link{% if days == d %} active{% endif %}">Last {{ d }} days</a>
@@ -19,7 +19,7 @@
     </div>
     <div class="kpi-card">
         <span class="kpi-value" id="kpi-cost">${{ "%.2f"|format(metrics.estimated_cost_usd | default(0)) }}</span>
-        <span class="kpi-label">Est. cost</span>
+        <span class="kpi-label">Estimated cost (USD)</span>
     </div>
     <div class="kpi-card">
         <span class="kpi-value" id="kpi-tokens">{{ "{:,}".format(metrics.total_tokens | default(0) | int) }}</span>
@@ -33,30 +33,30 @@
 
 <section class="charts-section">
     <div class="chart-card chart-wide">
-        <h2>Daily cost / usage trend</h2>
+        <h2>Daily usage & cost trend</h2>
         <div class="chart-wrap"><canvas id="chart-cost-trend"></canvas></div>
     </div>
     <div class="chart-card">
-        <h2>Hourly usage</h2>
+        <h2>Peak usage by hour (UTC)</h2>
         <div class="chart-wrap"><canvas id="chart-hourly"></canvas></div>
     </div>
     <div class="chart-card">
-        <h2>Tool usage</h2>
+        <h2>Feature & tool usage</h2>
         <div class="chart-wrap"><canvas id="chart-tool-usage"></canvas></div>
     </div>
     <div class="chart-card">
-        <h2>Model usage</h2>
+        <h2>Model distribution</h2>
         <div class="chart-wrap"><canvas id="chart-model-usage"></canvas></div>
     </div>
     <div class="chart-card chart-wide">
-        <h2>Usage by role / practice</h2>
+        <h2>Usage by role & department</h2>
         <div class="chart-wrap"><canvas id="chart-role-practice"></canvas></div>
     </div>
 </section>
 
 <section class="tables-section">
     <div class="table-card">
-        <h2>Top users by cost</h2>
+        <h2>Top users by estimated cost</h2>
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
@@ -65,7 +65,7 @@
                         <th>Name</th>
                         <th>Department</th>
                         <th>Events</th>
-                        <th>Est. cost</th>
+                        <th>Est. cost (USD)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,14 +78,14 @@
                         <td>${{ "%.2f"|format(u.estimated_cost_usd) }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="5">No data</td></tr>
+                    <tr><td colspan="5">No data available.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
     <div class="table-card">
-        <h2>Top tools by failures</h2>
+        <h2>Tools with most failures</h2>
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
@@ -105,7 +105,7 @@
                         <td>{{ "%.0f"|format(t.success_rate_pct) }}%</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4">No failures</td></tr>
+                    <tr><td colspan="4">No failures recorded.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -114,12 +114,12 @@
 </section>
 
 <section class="insights-section">
-    <h2>Insight summary</h2>
+    <h2>Key insights</h2>
     <ul class="insights-list">
         {% for bullet in insights.bullets %}
         <li>{{ bullet }}</li>
         {% else %}
-        <li>No insights yet. Load data and refresh.</li>
+        <li>Run data ingestion (<code>python -m scripts.ingest_data</code>) and refresh the page to see insights.</li>
         {% endfor %}
     </ul>
 </section>

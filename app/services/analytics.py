@@ -433,22 +433,22 @@ def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
 
     if total_events > 0:
         bullets.append(
-            f"Total of {total_events:,} events from {unique_users} active user(s) in the last {days} days."
+            f"{total_events:,} events recorded from {unique_users} active users in the selected period."
         )
 
     by_role = usage_by_role(db, days=days)
     if by_role:
         top_role = max(by_role, key=lambda x: x.event_count)
         bullets.append(
-            f"'{top_role.dimension_value}' has the highest usage with {top_role.event_count:,} events "
-            f"({top_role.user_count} user(s))."
+            f"Role \"{top_role.dimension_value}\" shows the highest usage: {top_role.event_count:,} events "
+            f"across {top_role.user_count} users."
         )
 
     by_dept = usage_by_department(db, days=days)
     if by_dept:
         top_dept = max(by_dept, key=lambda x: x.event_count)
         bullets.append(
-            f"'{top_dept.dimension_value}' is the most active department with {top_dept.event_count:,} events."
+            f"Department \"{top_dept.dimension_value}\" is the most active with {top_dept.event_count:,} events."
         )
 
     tools = tool_usage_distribution(db, days=days)
@@ -456,7 +456,7 @@ def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
         top_tool = tools[0]
         pct = (100.0 * top_tool.count / total_events) if total_events else 0
         bullets.append(
-            f"Most used tool is '{top_tool.label}' ({top_tool.count:,} events, {pct:.0f}% of total)."
+            f"Most used feature is \"{top_tool.label}\": {top_tool.count:,} events ({pct:.0f}% of total)."
         )
 
     rates = tool_success_failure_rates(db, days=days)
@@ -464,18 +464,18 @@ def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
         lowest = min(rates, key=lambda x: x.success_rate_pct)
         if lowest.failure_count > 0:
             bullets.append(
-                f"'{lowest.tool}' has the lowest success rate at {lowest.success_rate_pct:.0f}% "
-                f"({lowest.failure_count} failures)."
+                f"\"{lowest.tool}\" has the lowest success rate ({lowest.success_rate_pct:.0f}%) "
+                f"with {lowest.failure_count} failures."
             )
 
     avg_dur = average_session_duration(db, days=days)
     if avg_dur is not None and avg_dur > 0:
-        bullets.append(f"Average session duration is {avg_dur:.1f} seconds.")
+        bullets.append(f"Average session duration: {avg_dur:.1f} seconds.")
 
     hours = peak_usage_hours(db, days=days)
     if hours:
         peak = max(hours, key=lambda x: x.count)
-        bullets.append(f"Peak usage hour is {peak.hour}:00 UTC with {peak.count} events.")
+        bullets.append(f"Peak activity occurs at {peak.hour}:00 UTC ({peak.count} events).")
 
     trend = cost_trend_over_time(db, days=days)
     if len(trend) >= 2:
@@ -484,21 +484,19 @@ def narrative_insights(db: Session, days: int = 30) -> NarrativeInsights:
         if prev > 0:
             chg = 100.0 * (recent - prev) / prev
             bullets.append(
-                f"Latest day had {recent:,} events ({chg:+.0f}% vs previous day)."
+                f"Most recent day: {recent:,} events ({chg:+.0f}% vs previous day)."
             )
-    # Unusual spike: last day > 2x average of previous 7 days
     if len(trend) >= 8:
         last_day = trend[-1].event_count
         prev_7_avg = sum(t.event_count for t in trend[-8:-1]) / 7.0
         if prev_7_avg > 0 and last_day >= 2.0 * prev_7_avg:
             bullets.append(
-                f"Unusual spike: latest day ({last_day:,} events) is at least 2x the prior 7-day average."
+                f"Usage spike detected: latest day ({last_day:,} events) is at least 2× the prior 7-day average."
             )
-    # Stakeholder-oriented: estimated cost
     kpis = dashboard_kpis(db, days=days)
     if kpis.get("estimated_cost_usd") is not None and kpis["estimated_cost_usd"] > 0:
         bullets.append(
-            f"Estimated cost over the period (usage proxy): ${kpis['estimated_cost_usd']:.2f}."
+            f"Estimated period cost (usage-based): ${kpis['estimated_cost_usd']:.2f}."
         )
 
     # Cap at 8
