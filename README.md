@@ -1,236 +1,177 @@
 # Claude Code Telemetry Analytics Platform
 
-End-to-end analytics platform for Claude Code telemetry: generate sample data, ingest into SQLite, run analytics, and serve a stakeholder-facing dashboard. Built for Python 3.9 with a minimal, production-style stack (FastAPI, SQLAlchemy, Jinja2, Chart.js)—no Streamlit, Dash, or React. Suitable for engineering and product teams evaluating usage, cost, and reliability.
+A professional analytics platform for **Claude Code telemetry data**, built as an internship-style project. It ingests event telemetry and employee data, stores it in SQLite, and serves an interactive dashboard with usage metrics, charts, and automated insights.
 
 ---
 
-## 1. Project overview
+## Project Overview
 
-The platform ingests telemetry events (session starts, completions, edits, errors, etc.) and employee metadata to produce:
+This project is an **analytics platform for Claude Code telemetry data**. It processes raw telemetry events (session starts, completions, edits, errors, etc.) and employee metadata to deliver:
 
-- **Stored data:** Normalized events and employees in SQLite, plus session and daily aggregates.
-- **Analytics:** Usage by role and department, cost/usage trends, peak hours, tool and model distribution, success/failure rates, session duration, top users and tools.
-- **Dashboard:** KPI cards, trend and distribution charts, top-user and top-tool tables, and auto-generated narrative insights.
-- **API:** REST endpoints for all metrics and a single-page HTML dashboard for viewing.
+- Normalized storage and session/daily aggregates
+- Usage and cost metrics with optional cost anomaly detection
+- An interactive, stakeholder-facing dashboard with KPIs, charts, and narrative insights
 
-Target audience: engineering and product stakeholders who need usage, cost, and reliability insights from Claude Code usage.
-
----
-
-## 2. Architecture overview
-
-- **Entrypoint:** `main.py` runs the FastAPI app with uvicorn.
-- **App:** `app/main.py` creates the FastAPI app, mounts static files, and registers page and API routes. `init_db()` ensures SQLite tables exist on startup.
-- **Data layer:** SQLAlchemy models and sessions; config in `config/settings.py` (DB URL, paths to raw data).
-- **Pipeline:** Standalone scripts under `scripts/` for generation and ingestion; services under `app/services/` for ingestion, analytics, and legacy loading.
-- **Presentation:** Jinja2 templates for the dashboard; Chart.js (CDN) for charts; API returns JSON for programmatic access.
-
-No background workers or message queues; ingestion is run-on-demand via script or (legacy) API.
+The platform is designed for engineering and product teams who need visibility into usage patterns, cost estimates, and reliability from Claude Code usage.
 
 ---
 
-## 3. Tech stack
+## Key Features
 
-| Layer        | Choice |
-|-------------|--------|
-| Runtime     | Python 3.9 |
-| API         | FastAPI |
-| Server      | Uvicorn |
-| ORM / DB    | SQLAlchemy 2.x, SQLite |
-| Validation  | Pydantic, pydantic-settings |
-| Templates   | Jinja2 |
-| Frontend    | HTML/CSS, vanilla JS, Chart.js (CDN) |
-| Tests       | pytest, pytest-asyncio, httpx |
-
-No Pandas in the critical path (analytics use SQLAlchemy and in-process aggregation). No React, Streamlit, or Dash.
+- **Telemetry ingestion** — Ingest JSONL telemetry logs and CSV employee data; supports flat and batched formats with validation and deduplication
+- **Analytics engine** — Typed, modular analytics for KPIs, trends, distributions, success rates, and session metrics
+- **Usage metrics** — Total events, active users, token proxies, estimated cost, usage by role and department
+- **Automated insights** — 5–10 plain-English bullet insights (peak usage, dominant model, top department, cost anomalies, etc.)
+- **Interactive dashboard** — Server-rendered dashboard with KPI cards, time-window filter, charts, tables, and Key Insights section
 
 ---
 
-## 4. Folder structure
+## Architecture
+
+End-to-end pipeline:
+
+```
+Raw telemetry data (JSONL + CSV)
+    → Data ingestion (scripts + app/services)
+    → SQLite storage (events, employees, sessions, daily_metrics)
+    → Analytics engine (KPIs, trends, distributions, insights)
+    → Dashboard visualization (Jinja2 + Chart.js)
+```
+
+- **Entrypoint:** `main.py` runs the FastAPI app with Uvicorn.
+- **App:** `app/main.py` creates the app, mounts static files, and registers page and API routes.
+- **Data layer:** SQLAlchemy models and sessions; config in `config/settings.py`.
+- **Pipeline:** Scripts under `scripts/` for generation and ingestion; services under `app/services/` for ingestion, analytics, and insights.
+- **Presentation:** Jinja2 templates and Chart.js for the dashboard; REST API for programmatic access.
+
+---
+
+## Tech Stack
+
+| Layer     | Technology   |
+|----------|--------------|
+| Runtime  | Python 3.9   |
+| API      | FastAPI      |
+| Data     | Pandas, SQLAlchemy, SQLite |
+| Templates| Jinja2       |
+| Frontend | HTML/CSS, vanilla JS, Chart.js |
+| Tests    | pytest, pytest-asyncio, httpx |
+
+---
+
+## Project Structure
 
 ```
 .
-├── main.py                    # Run app: uvicorn (host 0.0.0.0, port 8000)
-├── generate_fake_data.py      # Wrapper → scripts.generate_data (writes data/raw/)
+├── main.py                 # Application entrypoint (Uvicorn)
+├── generate_fake_data.py    # Wrapper to generate sample data
 ├── requirements.txt
 ├── config/
-│   ├── __init__.py
-│   └── settings.py            # DB URL, telemetry_logs path, employees path
+│   └── settings.py         # DB URL, paths to telemetry and employees
 ├── scripts/
-│   ├── generate_data.py       # Writes telemetry_logs.jsonl + employees.csv → data/raw/
-│   └── ingest_data.py         # Full pipeline: JSONL + CSV → SQLite, sessions, daily_metrics
+│   ├── generate_data.py    # Writes telemetry_logs.jsonl + employees.csv
+│   └── ingest_data.py      # Full pipeline: JSONL + CSV → SQLite + aggregates
 ├── app/
-│   ├── __init__.py
-│   ├── main.py                # FastAPI factory, init_db, routes
-│   ├── database.py            # Engine, SessionLocal, Base, get_db, init_db
-│   ├── models/                # TelemetryEvent, Employee, SessionSummary, DailyMetric
-│   ├── schemas/               # Pydantic request/response models
+│   ├── main.py             # FastAPI factory, static files, routes
+│   ├── database.py         # Engine, session, init_db
+│   ├── models/             # TelemetryEvent, Employee, SessionSummary, DailyMetric
+│   ├── schemas/            # Pydantic request/response models
 │   ├── services/
-│   │   ├── data_loader.py     # Legacy: flat JSONL/CSV → DB
-│   │   ├── ingestion.py       # Pipeline: batched/nested JSONL, employees, sessions, daily_metrics
-│   │   ├── analytics.py       # KPIs, trends, distributions, insights (typed, modular)
-│   │   └── analytics_service.py # Legacy summary/events-by-type/over-time
-│   ├── routes/                # pages (dashboard), analytics API, metrics API
-│   ├── templates/             # base.html, dashboard.html
-│   └── static/                # css/style.css, js/dashboard.js
-├── tests/                     # conftest (in-memory DB, client), test_api, test_services
-└── data/raw/                  # telemetry_logs.jsonl, employees.csv (gitignored)
+│   │   ├── ingestion.py    # Batched/nested JSONL + CSV → DB
+│   │   ├── analytics.py    # KPIs, trends, distributions, cost anomalies
+│   │   └── insights.py     # Automated narrative insight generator
+│   ├── routes/             # Dashboard and analytics API
+│   ├── templates/          # base.html, dashboard.html
+│   └── static/             # CSS and dashboard JavaScript (Chart.js)
+├── tests/                  # pytest tests (API, services)
+└── data/raw/               # Generated telemetry and CSV (gitignored)
 ```
 
 ---
 
-## 5. Data flow
+## Running the Project
 
-1. **Generate** (`scripts/generate_data.py` or `python generate_fake_data.py`)  
-   Produces `data/raw/telemetry_logs.jsonl` (flat events: event_id, timestamp, user_id, event_type, duration_ms, error_code) and `data/raw/employees.csv` (employee_id, name, email, department, role).
-
-2. **Ingest** (`python -m scripts.ingest_data`)  
-   - Reads JSONL (supports flat lines and batched `logEvents`; decodes nested `message` JSON when present).  
-   - Normalizes and deduplicates by event_id; loads employees from CSV.  
-   - Joins events to employees by email (if present) or user_id → employee_id.  
-   - Writes to **SQLite**: `telemetry_events`, `employees`, then rebuilds `sessions_summary` (session boundaries by user + 30‑min gap / session_start) and `daily_metrics` (total_events, total_sessions, unique_users per day).  
-   - Logging and skip-on-error for malformed rows.
-
-3. **SQLite**  
-   Single file (default `telemetry.db`). Tables: `telemetry_events`, `employees`, `sessions_summary`, `daily_metrics`.
-
-4. **Analytics** (`app/services/analytics.py`)  
-   Reusable, typed functions over the DB: KPIs (events, estimated cost, token proxy, active users), usage by role/department, cost/usage trend over time, peak hours, tool/model distribution, tool success/failure rates, average session duration, top users by cost, top tools by failures, and narrative insights (5–8 bullets).
-
-5. **Dashboard**  
-   Server-rendered Jinja2 page: KPIs, charts (daily trend, hourly, tool bar, model doughnut, role/practice bar), tables (top users by cost, top tools by failures), and insight summary. Date-range filter: `?days=7`, `?days=30`, or `?days=90`. Data injected as `DASHBOARD_DATA`; Chart.js renders client-side.
-
----
-
-## 6. Setup (Python 3.9)
+### 1. Setup
 
 ```bash
-# Clone or unpack the project, then:
 python3.9 -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate      # macOS/Linux
-
+.venv\Scripts\activate    # Windows
+# source .venv/bin/activate   # macOS/Linux
 pip install -r requirements.txt
 ```
 
-Optional: copy `.env.example` to `.env` and set `DATABASE_URL`, `TELEMETRY_LOGS_PATH`, `EMPLOYEES_CSV_PATH` if you need to override defaults (see `config/settings.py`).
+### 2. Generate data
 
----
-
-## 7. Generate data
-
-Writes into `data/raw/` (directory created if missing).
+Produces sample telemetry and employee data in `data/raw/`:
 
 ```bash
 python generate_fake_data.py
-# or
-python -m scripts.generate_data
+# or: python -m scripts.generate_data
 ```
 
-Default: 50 employees, 2000 events over the last 30 days. Outputs `data/raw/telemetry_logs.jsonl` and `data/raw/employees.csv`.
+### 3. Ingest data
 
----
-
-## 8. Ingest data
-
-Loads from `data/raw/` into SQLite and rebuilds session and daily aggregates.
+Loads raw data into SQLite and builds session/daily aggregates:
 
 ```bash
 python -m scripts.ingest_data
 ```
 
-Uses paths from config (default `data/raw/telemetry_logs.jsonl` and `data/raw/employees.csv`). Idempotent for events and employees (skips duplicates by event_id / employee_id). Sessions and daily_metrics are replaced on each run.
-
----
-
-## 9. Run the app
+### 4. Run the server
 
 ```bash
 python main.py
 ```
 
-- **Dashboard:** http://127.0.0.1:8000/
+Open the **dashboard** at **http://127.0.0.1:8000/**.
 
-The dashboard “Refresh data from files” button runs the legacy loader (flat JSONL/CSV) against the same paths; for the full pipeline (batched/nested JSONL, sessions, daily_metrics), run `python -m scripts.ingest_data` and refresh the page.
-
----
-
-## 10. API endpoints
-
-| Method + Path | Description |
-|---------------|-------------|
-| **Metrics (KPIs)** | |
-| `GET /api/metrics?days=30` | `total_events`, `estimated_cost_usd`, `total_tokens`, `active_users` |
-| **Analytics** (prefix `/api/analytics`, optional `?days=30`) | |
-| `GET /summary` | Total events, employees, unique users, event types, date range |
-| `GET /events-by-type` | Counts per event_type |
-| `GET /events-over-time` | Daily event counts |
-| `GET /events-by-department` | Counts per department |
-| `GET /top-users?limit=10` | Top users by event count |
-| `GET /usage-by-role` | Event count + duration by role |
-| `GET /usage-by-department` | Event count + duration by department |
-| `GET /cost-trend` | Daily trend (labels, event_counts, total_duration_ms) |
-| `GET /peak-usage-hours` | Count by hour (0–23) |
-| `GET /tool-usage` | Event-type distribution (labels, values, total) |
-| `GET /model-usage` | Model distribution (from payload or default) |
-| `GET /tool-success-rates` | Per-tool success/failure and success_rate_pct |
-| `GET /average-session-duration` | Mean session duration (seconds) |
-| `GET /top-users-activity?limit=10` | Top users with name/department |
-| `GET /top-departments?limit=10` | Top departments by usage |
-| `GET /insights` | Narrative bullets + generated_at |
-| `POST /load-data` | Legacy: load flat JSONL + CSV into DB |
+Use the time-window filter (e.g. Last 7 / 30 / 90 days) to scope metrics. For a full refresh, run `python -m scripts.ingest_data` again and reload the page.
 
 ---
 
-## 11. Key insights supported by the analytics
+## Dashboard Overview
 
-- **Volume and reach:** Total events, active users, and date range (summary + metrics).
-- **Cost and tokens:** Estimated cost (USD) and total tokens from duration/event proxies; daily trend for “cost” over time; top users by estimated cost.
-- **When usage happens:** Peak usage by hour (UTC); daily trend for usage over time.
-- **What is used:** Tool (event type) distribution; model distribution (when present in payload).
-- **Who uses it:** Usage by role (Intern, Junior, Mid, Senior, Lead) and by department (practice); top users and top departments.
-- **Reliability:** Per-tool success vs failure and success rate; top tools by failure count.
-- **Sessions:** Average session duration; session and daily aggregates in DB.
-- **Narrative:** Auto-generated 5–8 bullet insights (totals, top role/department/tool, lowest success rate, avg session duration, peak hour, latest-day change, unusual spikes when applicable, estimated cost for stakeholders).
+- **KPI cards** — Total events, estimated cost (USD), total tokens (proxy), and active users
+- **Charts** — Daily usage trend (line), peak usage by hour (bar), feature/tool usage (bar), model distribution (doughnut), usage by role and department (bar)
+- **Tables** — Top users by estimated cost; tools with most failures
+- **Key insights** — Automated bullet insights (volume, peak hour, dominant model, top department, session duration, usage spikes, cost anomalies, most active user, estimated cost)
 
 ---
 
-## 12. Assumptions and tradeoffs
+## Analytics Capabilities
 
-- **Cost and tokens:** No raw token or cost fields in the schema. Analytics use duration_ms and event counts as proxies (e.g. tokens from duration, fixed rate per 1k tokens for estimated cost). Dashboard and API expose these as “estimated” so stakeholders understand they are approximations until real billing/token data is available.
-- **Input format:** Ingestion supports flat JSONL, batched `logEvents`, and optional nested `message` JSON. Generator produces only flat JSONL; the pipeline is built for future or external batched/nested sources.
-- **Identity:** Employee join is by email (if present in event) or user_id ↔ employee_id. Events without a match keep user_id only; optional employee_id FK when matched.
-- **Sessions:** Session boundary = session_start event or gap > 30 minutes; no explicit session_id in raw events.
-- **Single process:** No Celery or job queue; ingestion is script or one-off API. Suitable for internship-scale data and demos; for large volumes, a queue and worker would be a natural extension.
-- **Frontend:** Server-rendered HTML + Chart.js. No SPA or React to keep scope and stack minimal while still delivering a professional dashboard.
+- **Token usage trends** — Daily event counts and duration-based token proxy; estimated cost over time
+- **Model usage distribution** — From telemetry payload or default bucket
+- **Hourly activity** — Peak usage by hour (UTC) for bar chart
+- **Top users** — By event count and estimated cost (with name/department when linked)
+- **Department usage** — Event count and duration by department; highest-usage department in insights
+- **Cost estimation** — Duration- and event-based token proxy with $/1k-token rate; cost anomaly detection (days >30% above 7-day rolling average)
+
+Additional metrics: usage by role, tool/feature distribution, tool success/failure rates, average session duration, top tools by failures.
 
 ---
 
-## 13. Future improvements
+## Future Improvements
 
-- **Real cost and tokens:** Add token/cost fields to telemetry (or from a separate billing feed) and replace proxy logic in analytics and dashboard.
-- **Auth and multi-tenant:** Optional login and scoping by team/org so dashboards and APIs only show allowed data.
-- **Caching:** Cache heavy analytics (e.g. cost trend, insights) with TTL or invalidation on ingest.
-- **Async ingestion:** Run ingestion in a background task or worker and expose status (e.g. “ingestion in progress” or last run time) on the dashboard or API.
-- **Exports:** CSV/Excel export for top users, tool success rates, and trend data.
-- **Alerts:** Thresholds on cost, failure rate, or session duration with optional notifications.
-- **More dimensions:** Project or repo from payload or separate mapping table to support “top projects” and per-project analytics.
+- **Real-time streaming analytics** — Ingest and aggregate telemetry via a message queue or streaming pipeline
+- **ML-based anomaly detection** — Replace or augment rule-based cost anomalies with learned baselines
+- **Alerting system** — Thresholds on cost, failure rate, or usage with email/Slack notifications
+- **Exports** — CSV/Excel export for top users, trends, and insights
+- **Auth and multi-tenant** — Login and scoping by team or organization
 
 ---
 
 ## Testing
 
-From the project root (with virtualenv activated):
+From the project root with the virtualenv activated:
 
 ```bash
-# Ensure project root is on PYTHONPATH when needed
 set PYTHONPATH=.   # Windows
-# export PYTHONPATH=.  # macOS/Linux
-
+# export PYTHONPATH=.   # macOS/Linux
 pytest tests/ -v
 ```
 
-Tests use an in-memory SQLite DB and override the app’s DB dependency so no file DB is required.
+Tests use an in-memory SQLite database; no file DB is required.
 
 ---
 
