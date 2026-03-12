@@ -1,5 +1,5 @@
 """
-Analytics API endpoints: summary, events by type, events over time, load data.
+Analytics API endpoints: summary, events by type, trends, and stakeholder metrics.
 """
 from typing import Optional
 
@@ -9,10 +9,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services.data_loader import DataLoader
 from app.services.analytics_service import AnalyticsService
+from app.services import analytics as analytics_module
 from app.schemas.analytics import (
     EventsByTypeResponse,
     EventsOverTimeResponse,
     SummaryStatsResponse,
+    CostTrendResponse,
+    PeakHoursResponse,
+    DistributionResponse,
+    ToolSuccessRateItem,
+    NarrativeInsightsResponse,
 )
 
 router = APIRouter()
@@ -69,3 +75,94 @@ def load_data(db: Session = Depends(get_db)):
     loader = DataLoader(db)
     result = loader.load_all()
     return result
+
+
+# ---- Stakeholder analytics (charts + tables) ----
+
+def _days_param(days: Optional[int] = 30) -> Optional[int]:
+    if days is not None and (days < 1 or days > 365):
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
+    return days
+
+
+@router.get("/usage-by-role")
+def get_usage_by_role(days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Usage (event count + duration) by employee role. API-friendly for charts/tables."""
+    _days_param(days)
+    return analytics_module.usage_by_role_for_api(db, days=days)
+
+
+@router.get("/usage-by-department")
+def get_usage_by_department(days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Usage by department (practice). API-friendly for charts/tables."""
+    _days_param(days)
+    return analytics_module.usage_by_department_for_api(db, days=days)
+
+
+@router.get("/cost-trend", response_model=CostTrendResponse)
+def get_cost_trend(days: int = 30, db: Session = Depends(get_db)):
+    """Usage/cost trend over time. Labels + series for line/area charts."""
+    _days_param(days)
+    return analytics_module.cost_trend_for_api(db, days=days)
+
+
+@router.get("/peak-usage-hours", response_model=PeakHoursResponse)
+def get_peak_usage_hours(days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Event count by hour of day (0-23 UTC). For bar chart."""
+    _days_param(days)
+    return analytics_module.peak_usage_hours_for_api(db, days=days)
+
+
+@router.get("/tool-usage", response_model=DistributionResponse)
+def get_tool_usage(days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Most common tool/event type distribution. For pie/bar chart."""
+    _days_param(days)
+    return analytics_module.tool_usage_for_api(db, days=days)
+
+
+@router.get("/model-usage", response_model=DistributionResponse)
+def get_model_usage(days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Model usage distribution (from payload or default). For pie chart."""
+    _days_param(days)
+    return analytics_module.model_usage_for_api(db, days=days)
+
+
+@router.get("/tool-success-rates")
+def get_tool_success_rates(days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Success vs failure rate per tool/event type. Table-friendly."""
+    _days_param(days)
+    return analytics_module.tool_success_rates_for_api(db, days=days)
+
+
+@router.get("/average-session-duration")
+def get_average_session_duration(days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Average session duration in seconds."""
+    _days_param(days)
+    avg = analytics_module.average_session_duration(db, days=days)
+    return {"average_seconds": avg, "unit": "seconds"}
+
+
+@router.get("/top-users-activity")
+def get_top_users_activity(limit: int = 10, days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Top users by event count with optional name/department."""
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 100")
+    _days_param(days)
+    return analytics_module.top_users_activity(db, limit=limit, days=days)
+
+
+@router.get("/top-departments")
+def get_top_departments(limit: int = 10, days: Optional[int] = 30, db: Session = Depends(get_db)):
+    """Top departments by usage (event count)."""
+    if limit < 1 or limit > 50:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 50")
+    _days_param(days)
+    return analytics_module.top_departments_by_usage(db, limit=limit, days=days)
+
+
+@router.get("/insights", response_model=NarrativeInsightsResponse)
+def get_narrative_insights(days: int = 30, db: Session = Depends(get_db)):
+    """5-8 auto-generated bullet insights in plain English."""
+    _days_param(days)
+    ni = analytics_module.narrative_insights(db, days=days)
+    return NarrativeInsightsResponse(bullets=ni.bullets, generated_at=ni.generated_at)
