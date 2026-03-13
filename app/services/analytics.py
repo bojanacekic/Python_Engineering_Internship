@@ -589,6 +589,51 @@ def cost_anomalies(db: Session, days: int = 30, threshold_pct: float = 30.0) -> 
     return anomalies
 
 
+# ---- Simple next-day forecast (baseline) ----
+
+def next_day_forecast(db: Session, days: int = 7) -> Dict[str, Any]:
+    """
+    Lightweight next-day forecast for event volume and estimated cost.
+
+    Method: simple rolling average over the last N days of daily metrics (event_count
+    and estimated cost). This is intentionally transparent and non-ML for an
+    internship setting.
+    """
+    if days < 1:
+        days = 1
+    trend = cost_trend_over_time(db, days=days)
+    if not trend:
+        return {
+            "method": "rolling_mean_last_N_days",
+            "window_days": 0,
+            "next_date": None,
+            "expected_events": None,
+            "expected_cost_usd": None,
+        }
+    window = min(days, len(trend))
+    recent = trend[-window:]
+    total_events = sum(b.event_count for b in recent)
+    avg_events = total_events / window if window else 0.0
+    daily_costs = [_daily_cost_usd(b.total_duration_ms, b.event_count) for b in recent]
+    avg_cost = sum(daily_costs) / window if window else 0.0
+
+    next_date: Optional[str]
+    try:
+        # cost_trend_over_time uses DATE(timestamp) which yields YYYY-MM-DD on SQLite.
+        last_date = datetime.strptime(trend[-1].date, "%Y-%m-%d").date()
+        next_date = (last_date + timedelta(days=1)).isoformat()
+    except Exception:
+        next_date = None
+
+    return {
+        "method": "rolling_mean_last_N_days",
+        "window_days": window,
+        "next_date": next_date,
+        "expected_events": int(round(avg_events)) if avg_events > 0 else 0,
+        "expected_cost_usd": round(avg_cost, 2) if avg_cost > 0 else 0.0,
+    }
+
+
 # ---- Insights (delegate to insights module) ----
 
 def get_insights(db: Session, days: int = 30) -> NarrativeInsights:
