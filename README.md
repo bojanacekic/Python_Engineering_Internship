@@ -151,6 +151,24 @@ Additional metrics: usage by role, tool/feature distribution, tool success/failu
 
 ---
 
+## API Access
+
+The platform exposes **REST API endpoints** for programmatic access to processed telemetry analytics. These endpoints return JSON and allow other systems to retrieve analytics data without relying on the dashboard UI. All support an optional `days` query parameter (default 30; 1–365) unless noted.
+
+| Endpoint | Description |
+|----------|-------------|
+| **GET /api/summary** | Returns overall usage KPIs: total events, active users, token proxies, and estimated cost for the selected time window. |
+| **GET /api/trends** | Returns daily usage metrics (labels, event counts, duration) for charts and trend analysis. |
+| **GET /api/top-users** | Returns users ranked by activity and estimated cost (user_id, name, department, event_count, estimated_cost_usd). Optional `limit` and `days`. |
+| **GET /api/tool-stats** | Returns tool usage statistics (distribution) and per-tool success/failure rates. |
+| **GET /api/insights** | Returns automatically generated analytical insights (bullets and generated_at timestamp). |
+| **GET /api/live-summary** | Returns the latest KPI metrics for near-real-time monitoring. |
+| **GET /api/forecast** | Returns a next-day forecast for event volume and estimated cost. |
+
+Example: `curl "http://127.0.0.1:8000/api/summary?days=7"`
+
+---
+
 ## Future Improvements
 
 - **Real-time streaming analytics** — Ingest and aggregate telemetry via a message queue or streaming pipeline
