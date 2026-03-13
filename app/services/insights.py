@@ -112,4 +112,36 @@ def generate_insights(metrics: Dict[str, Any]) -> List[str]:
             f"Cost anomaly on {date_str}: ${cost_val:.2f} ({dev:+.0f}% above rolling average)."
         )
 
-    return bullets[:10]
+    # Advanced: busiest weekday
+    usage_weekday = metrics.get("usage_by_weekday") or []
+    if usage_weekday:
+        busiest = max(usage_weekday, key=lambda x: x.get("count", 0))
+        if busiest.get("count", 0) > 0:
+            bullets.append(
+                f"Busiest weekday: {busiest.get('weekday', '?')} ({busiest.get('count', 0):,} events)."
+            )
+
+    # Advanced: most volatile day (largest day-over-day change)
+    vol = metrics.get("most_volatile_day")
+    if vol and vol.get("date"):
+        chg = vol.get("change_pct", 0)
+        bullets.append(
+            f"Largest day-over-day change: {vol['date']} ({chg:+.0f}% vs previous day)."
+        )
+
+    # Advanced: avg events per active user
+    avg_events_user = metrics.get("avg_events_per_active_user")
+    if avg_events_user is not None and active_users > 0:
+        bullets.append(
+            f"Average events per active user: {avg_events_user:.0f}."
+        )
+
+    # Advanced: top department by cost
+    cost_by_dept = metrics.get("cost_by_department") or []
+    if cost_by_dept and len(cost_by_dept) > 0:
+        top = cost_by_dept[0]
+        bullets.append(
+            f"Highest cost department: \"{top.get('department', '?')}\" (${top.get('estimated_cost_usd', 0):.2f})."
+        )
+
+    return bullets[:12]

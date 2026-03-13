@@ -411,6 +411,147 @@ def top_tools_by_failures(db: Session, limit: int = 10, days: Optional[int] = 30
     ]
 
 
+# ---- Advanced statistical analysis (bonus) ----
+
+_WEEKDAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+
+def usage_by_weekday(db: Session, days: Optional[int] = 30) -> List[Dict[str, Any]]:
+    """
+    Event count by day of week (Monday=0 .. Sunday=6). API-friendly list of {weekday, count}.
+    SQLite strftime('%w') gives 0=Sunday; we map to Mon–Sun order.
+    """
+    cutoff = _cutoff_date(db, days)
+    q = (
+        db.query(
+            func.strftime("%w", TelemetryEvent.timestamp).label("dow"),
+            func.count(TelemetryEvent.id).label("count"),
+        )
+        .group_by(func.strftime("%w", TelemetryEvent.timestamp))
+    )
+    if cutoff:
+        q = q.filter(TelemetryEvent.timestamp >= cutoff)
+    rows = q.all()
+    # SQLite %w: 0=Sun, 1=Mon, ..., 6=Sat. Map to index 0=Mon .. 6=Sun: (int(dow) + 6) % 7
+    by_index: Dict[int, int] = {}
+    for r in rows:
+        dow = int(r.dow) if r.dow is not None else 0
+        idx = (dow + 6) % 7
+        by_index[idx] = by_index.get(idx, 0) + r.count
+    return [
+        {"weekday": _WEEKDAY_NAMES[i], "count": by_index.get(i, 0)}
+        for i in range(7)
+    ]
+
+
+def average_session_duration_by_department(db: Session, days: Optional[int] = 30) -> List[Dict[str, Any]]:
+    """Mean session duration in seconds by department. Joins SessionSummary to Employee."""
+    cutoff = _cutoff_date(db, days)
+    q = (
+        db.query(
+            Employee.department,
+            func.avg(SessionSummary.duration_seconds).label("avg_seconds"),
+            func.count(SessionSummary.id).label("session_count"),
+        )
+        .join(SessionSummary, SessionSummary.user_id == Employee.employee_id)
+        .filter(SessionSummary.duration_seconds.isnot(None))
+        .group_by(Employee.department)
+    )
+    if cutoff:
+        q = q.filter(SessionSummary.session_start_ts >= cutoff)
+    rows = q.all()
+    return [
+        {
+            "department": r.department or "—",
+            "avg_duration_seconds": round(float(r.avg_seconds), 2) if r.avg_seconds is not None else None,
+            "session_count": r.session_count,
+        }
+        for r in rows
+    ]
+
+
+def cost_by_department(db: Session, days: Optional[int] = 30) -> List[Dict[str, Any]]:
+    """Estimated cost (USD) and event count per department. Same cost proxy as dashboard KPIs."""
+    depts = usage_by_department(db, days=days)
+    out: List[Dict[str, Any]] = []
+    for u in depts:
+        dur_ms = u.total_duration_ms
+        tokens = dur_ms // 1000 * 60 if dur_ms > 0 else u.event_count * 300
+        cost = round(tokens / 1000 * 0.002, 2)
+        out.append({
+            "department": u.dimension_value,
+            "event_count": u.event_count,
+            "estimated_cost_usd": cost,
+            "user_count": u.user_count,
+        })
+    return sorted(out, key=lambda x: -x["estimated_cost_usd"])
+
+
+def failure_rate_by_tool(db: Session, days: Optional[int] = 30) -> List[Dict[str, Any]]:
+    """Per-tool failure rate (failure_count / total * 100). For reliability analysis."""
+    rates = tool_success_failure_rates(db, days=days)
+    return [
+        {
+            "tool": r.tool,
+            "failure_count": r.failure_count,
+            "success_count": r.success_count,
+            "success_rate_pct": r.success_rate_pct,
+            "failure_rate_pct": round(100.0 - r.success_rate_pct, 1),
+        }
+        for r in rates
+    ]
+
+
+def most_volatile_day(db: Session, days: int = 30) -> Optional[Dict[str, Any]]:
+    """
+    The day (date) with the largest absolute percentage change in event count vs previous day.
+    Returns {date, event_count, change_pct} or None if insufficient data.
+    """
+    trend = cost_trend_over_time(db, days=days)
+    if len(trend) < 2:
+        return None
+    best: Optional[Dict[str, Any]] = None
+    for i in range(1, len(trend)):
+        prev_count = trend[i - 1].event_count
+        curr_count = trend[i].event_count
+        if prev_count <= 0:
+            change_pct = 100.0 if curr_count > 0 else 0.0
+        else:
+            change_pct = 100.0 * (curr_count - prev_count) / prev_count
+        if best is None or abs(change_pct) > abs(best.get("change_pct", 0)):
+            best = {
+                "date": trend[i].date,
+                "event_count": curr_count,
+                "change_pct": round(change_pct, 1),
+            }
+    return best
+
+
+def average_events_per_active_user(db: Session, days: Optional[int] = 30) -> Optional[float]:
+    """Mean events per active user over the period. Returns None if no active users."""
+    kpis = dashboard_kpis(db, days=days or 30)
+    active = kpis.get("active_users") or 0
+    total = kpis.get("total_events") or 0
+    if active <= 0:
+        return None
+    return round(total / active, 2)
+
+
+def advanced_stats(db: Session, days: int = 30) -> Dict[str, Any]:
+    """
+    Single call that returns all advanced statistical analyses for dashboard and API.
+    Reuses existing models and helpers.
+    """
+    return {
+        "usage_by_weekday": usage_by_weekday(db, days=days),
+        "avg_session_duration_by_department": average_session_duration_by_department(db, days=days),
+        "cost_by_department": cost_by_department(db, days=days),
+        "failure_rate_by_tool": failure_rate_by_tool(db, days=days),
+        "most_volatile_day": most_volatile_day(db, days=days),
+        "avg_events_per_active_user": average_events_per_active_user(db, days=days),
+    }
+
+
 # ---- Cost anomaly detection ----
 
 def _daily_cost_usd(duration_ms: int, event_count: int) -> float:
@@ -466,6 +607,7 @@ def get_insights(db: Session, days: int = 30) -> NarrativeInsights:
     top_users_list = top_users_by_cost(db, limit=5, days=days)
 
     anomalies_list = cost_anomalies(db, days=days, threshold_pct=30.0)
+    advanced = advanced_stats(db, days=days)
     metrics: Dict[str, Any] = {
         "total_events": kpis.get("total_events", 0),
         "active_users": kpis.get("active_users", 0),
@@ -491,6 +633,12 @@ def get_insights(db: Session, days: int = 30) -> NarrativeInsights:
         "avg_session_duration": average_session_duration(db, days=days),
         "top_users": top_users_list,
         "cost_anomalies": anomalies_list,
+        "usage_by_weekday": advanced.get("usage_by_weekday", []),
+        "avg_session_duration_by_department": advanced.get("avg_session_duration_by_department", []),
+        "cost_by_department": advanced.get("cost_by_department", []),
+        "failure_rate_by_tool": advanced.get("failure_rate_by_tool", []),
+        "most_volatile_day": advanced.get("most_volatile_day"),
+        "avg_events_per_active_user": advanced.get("avg_events_per_active_user"),
     }
     bullets = insights_module.generate_insights(metrics)
     return NarrativeInsights(

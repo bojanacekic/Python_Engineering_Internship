@@ -45,6 +45,7 @@ def dashboard(
     top_users_by_cost = analytics_module.top_users_by_cost(db, limit=10, days=days)
     top_tools_by_failures = analytics_module.top_tools_by_failures(db, limit=10, days=days)
     insights = analytics_module.get_insights(db, days=days)
+    advanced = analytics_module.advanced_stats(db, days=days)
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -62,5 +63,6 @@ def dashboard(
             "top_users_by_cost": top_users_by_cost,
             "top_tools_by_failures": top_tools_by_failures,
             "insights": insights,
+            "advanced_stats": advanced,
         },
     )

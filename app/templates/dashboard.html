@@ -54,6 +54,34 @@
     </div>
 </section>
 
+<section class="advanced-stats-section">
+    <div class="table-card advanced-stats-card">
+        <h2>Advanced stats</h2>
+        <div class="advanced-stats-grid">
+            {% set wd = advanced_stats.usage_by_weekday | default([]) %}
+            {% set busiest_wd = wd | max(attribute='count') if wd else none %}
+            <div class="advanced-stat">
+                <span class="advanced-stat-label">Busiest weekday</span>
+                <span class="advanced-stat-value">{{ busiest_wd.weekday if busiest_wd else '—' }}</span>
+            </div>
+            <div class="advanced-stat">
+                <span class="advanced-stat-label">Avg events per user</span>
+                <span class="advanced-stat-value">{{ advanced_stats.avg_events_per_active_user | default('—') }}</span>
+            </div>
+            {% set vol = advanced_stats.most_volatile_day %}
+            <div class="advanced-stat">
+                <span class="advanced-stat-label">Most volatile day</span>
+                <span class="advanced-stat-value">{% if vol %}{{ vol.date }} ({{ vol.change_pct | default(0) | int }}%){% else %}—{% endif %}</span>
+            </div>
+            {% set cost_depts = advanced_stats.cost_by_department | default([]) %}
+            <div class="advanced-stat">
+                <span class="advanced-stat-label">Top dept by cost</span>
+                <span class="advanced-stat-value">{% if cost_depts %}{{ cost_depts[0].department }} (${{ "%.2f"|format(cost_depts[0].estimated_cost_usd) }}){% else %}—{% endif %}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section class="tables-section">
     <div class="table-card">
         <h2>Top users by estimated cost</h2>

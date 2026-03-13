@@ -82,3 +82,14 @@ def get_insights(days: int = 30, db: Session = Depends(get_db)):
     _days(days)
     ni = analytics_module.get_insights(db, days=days)
     return {"bullets": ni.bullets, "generated_at": ni.generated_at}
+
+
+# ---- GET /api/advanced-stats: advanced statistical analysis ----
+@router.get("/advanced-stats")
+def get_advanced_stats(days: int = 30, db: Session = Depends(get_db)):
+    """
+    Advanced stats: usage by weekday, avg session duration by department,
+    cost by department, failure rate by tool, most volatile day, avg events per active user.
+    """
+    _days(days)
+    return analytics_module.advanced_stats(db, days=days)

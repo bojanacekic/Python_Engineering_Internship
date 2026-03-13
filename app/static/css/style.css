@@ -281,6 +281,40 @@ body {
     background: var(--surface-raised);
 }
 
+/* Advanced stats (compact block) */
+.advanced-stats-section {
+    margin-bottom: 2rem;
+}
+
+.advanced-stats-card.table-card {
+    max-width: 100%;
+}
+
+.advanced-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+.advanced-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.advanced-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.advanced-stat-value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
 /* Insights */
 .insights-section {
     background: var(--surface);

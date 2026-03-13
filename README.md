@@ -134,7 +134,8 @@ Use the time-window filter (e.g. Last 7 / 30 / 90 days) to scope metrics. For a 
 - **KPI cards** — Total events, estimated cost (USD), total tokens (proxy), and active users
 - **Charts** — Daily usage trend (line), peak usage by hour (bar), feature/tool usage (bar), model distribution (doughnut), usage by role and department (bar)
 - **Tables** — Top users by estimated cost; tools with most failures
-- **Key insights** — Automated bullet insights (volume, peak hour, dominant model, top department, session duration, usage spikes, cost anomalies, most active user, estimated cost)
+- **Advanced stats** — Compact block: busiest weekday, avg events per user, most volatile day, top department by cost
+- **Key insights** — Automated bullet insights (volume, peak hour, dominant model, top department, session duration, usage spikes, cost anomalies, most active user, estimated cost; plus advanced patterns such as busiest weekday, most volatile day, avg events per user, highest cost department)
 
 ---
 
@@ -149,6 +150,19 @@ Use the time-window filter (e.g. Last 7 / 30 / 90 days) to scope metrics. For a 
 
 Additional metrics: usage by role, tool/feature distribution, tool success/failure rates, average session duration, top tools by failures.
 
+### Bonus: Advanced Statistical Analysis
+
+The analytics layer includes **advanced statistical analyses** for deeper pattern discovery without overcrowding the dashboard:
+
+- **Usage by weekday** — Event counts by day of week (Monday–Sunday) to identify busiest weekdays.
+- **Average session duration by department** — Mean session length per department (from session aggregates joined to employees).
+- **Failure rate by tool** — Per-tool success and failure rates (percent and counts) for reliability analysis.
+- **Cost by department** — Estimated cost (USD) and event count per department, using the same cost proxy as dashboard KPIs.
+- **Most volatile day** — The calendar day with the largest absolute percentage change in event count vs the previous day.
+- **Average events per active user** — Mean events per user over the selected time window.
+
+These are computed in `app/services/analytics.py`, exposed via **GET /api/advanced-stats**, and summarized in a compact **Advanced stats** block on the dashboard (busiest weekday, avg events per user, most volatile day, top department by cost). Automated insights can reference these patterns (e.g. busiest weekday, highest cost department, largest day-over-day change) when relevant.
+
 ---
 
 ## API Access
@@ -162,6 +176,7 @@ The platform exposes **REST API endpoints** for programmatic access to processed
 | **GET /api/top-users** | Returns users ranked by activity and estimated cost (user_id, name, department, event_count, estimated_cost_usd). Optional `limit` and `days`. |
 | **GET /api/tool-stats** | Returns tool usage statistics (distribution) and per-tool success/failure rates. |
 | **GET /api/insights** | Returns automatically generated analytical insights (bullets and generated_at timestamp). |
+| **GET /api/advanced-stats** | Returns advanced statistical analysis: usage by weekday, avg session duration by department, cost by department, failure rate by tool, most volatile day, avg events per active user. |
 | **GET /api/live-summary** | Returns the latest KPI metrics for near-real-time monitoring. |
 | **GET /api/forecast** | Returns a next-day forecast for event volume and estimated cost. |
 
