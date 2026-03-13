@@ -137,6 +137,15 @@ Use the time-window filter (e.g. Last 7 / 30 / 90 days) to scope metrics. For a 
 - **Advanced stats** — Compact block: busiest weekday, avg events per user, most volatile day, top department by cost
 - **Key insights** — Automated bullet insights (volume, peak hour, dominant model, top department, session duration, usage spikes, cost anomalies, most active user, estimated cost; plus advanced patterns such as busiest weekday, most volatile day, avg events per user, highest cost department)
 
+### Near-real-time capability (demonstration)
+
+The project includes a **lightweight near-real-time monitoring demo** to show how the system could support live views without changing the core architecture (no WebSockets or event-streaming infrastructure):
+
+- **GET /api/live-summary** — Returns the latest KPI metrics (total events, estimated cost, total tokens, active users) and key insights (bullets and generated_at) in one response. Uses the same `dashboard_kpis` and `get_insights` analytics; intended for polling.
+- **Dashboard auto-refresh** — The dashboard polls `/api/live-summary?days=<current window>` every 30 seconds and updates only the four KPI cards and the Key insights list. Charts and tables are not refreshed (they stay as on initial load). A small “Last updated HH:MM:SS” indicator appears in the actions bar after the first successful refresh.
+
+This is a **demonstration** of polling-based near-real-time updates, not full real-time streaming. Data still comes from the existing SQLite store after ingestion; the demo shows how a client can periodically refetch summary and insights without a full page reload.
+
 ---
 
 ## Analytics Capabilities
@@ -177,7 +186,7 @@ The platform exposes **REST API endpoints** for programmatic access to processed
 | **GET /api/tool-stats** | Returns tool usage statistics (distribution) and per-tool success/failure rates. |
 | **GET /api/insights** | Returns automatically generated analytical insights (bullets and generated_at timestamp). |
 | **GET /api/advanced-stats** | Returns advanced statistical analysis: usage by weekday, avg session duration by department, cost by department, failure rate by tool, most volatile day, avg events per active user. |
-| **GET /api/live-summary** | Returns the latest KPI metrics for near-real-time monitoring. |
+| **GET /api/live-summary** | Returns latest KPIs and key insights in one response for near-real-time monitoring (polling). Optional `days`. |
 | **GET /api/forecast** | Returns a next-day forecast for event volume and estimated cost. |
 
 Example: `curl "http://127.0.0.1:8000/api/summary?days=7"`

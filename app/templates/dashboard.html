@@ -10,6 +10,7 @@
         <a href="?days={{ d }}" class="filter-link{% if days == d %} active{% endif %}">Last {{ d }} days</a>
         {% endfor %}
     </nav>
+    <span id="live-updated" class="live-updated" aria-live="polite"></span>
 </section>
 
 <section class="kpi-cards">
@@ -161,7 +162,8 @@
         toolUsage: {{ tool_usage | tojson }},
         modelUsage: {{ model_usage | tojson }},
         usageByRole: {{ usage_by_role | tojson }},
-        usageByDepartment: {{ usage_by_department | tojson }}
+        usageByDepartment: {{ usage_by_department | tojson }},
+        days: {{ days | int }}
     };
 </script>
 <script src="/static/js/dashboard.js"></script>

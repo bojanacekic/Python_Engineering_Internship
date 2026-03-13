@@ -114,6 +114,12 @@ body {
     margin-left: 1rem;
 }
 
+.live-updated {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-left: 1rem;
+}
+
 .filter-days {
     display: inline-flex;
     gap: 0.5rem;

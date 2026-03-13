@@ -35,6 +35,27 @@ def get_summary(days: int = 30, db: Session = Depends(get_db)):
     return {"days": days, **data}
 
 
+# ---- GET /api/live-summary: near-real-time KPIs + insights (lightweight demo) ----
+@router.get("/live-summary")
+def get_live_summary(days: int = 30, db: Session = Depends(get_db)):
+    """
+    Latest KPI metrics and key insights in one response for near-real-time monitoring.
+    Reuses dashboard_kpis and get_insights. Intended for polling (e.g. dashboard auto-refresh every 30s).
+    """
+    _days(days)
+    kpis = analytics_module.dashboard_kpis(db, days=days)
+    ni = analytics_module.get_insights(db, days=days)
+    return {
+        "days": days,
+        "total_events": kpis.get("total_events", 0),
+        "estimated_cost_usd": kpis.get("estimated_cost_usd"),
+        "total_tokens": kpis.get("total_tokens", 0),
+        "active_users": kpis.get("active_users", 0),
+        "bullets": ni.bullets,
+        "generated_at": ni.generated_at,
+    }
+
+
 # ---- GET /api/trends: daily usage/cost trend ----
 @router.get("/trends")
 def get_trends(days: int = 30, db: Session = Depends(get_db)):

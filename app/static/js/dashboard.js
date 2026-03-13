@@ -155,6 +155,62 @@
         });
     }
 
+    function formatNumber(n) {
+        if (typeof n !== "number" || isNaN(n)) return "0";
+        return n >= 1000 ? n.toLocaleString() : String(n);
+    }
+
+    function updateLiveSummary(data) {
+        var eventsEl = document.getElementById("kpi-events");
+        var costEl = document.getElementById("kpi-cost");
+        var tokensEl = document.getElementById("kpi-tokens");
+        var usersEl = document.getElementById("kpi-users");
+        if (eventsEl) eventsEl.textContent = formatNumber(data.total_events || 0);
+        if (costEl) costEl.textContent = "$" + (typeof data.estimated_cost_usd === "number" ? data.estimated_cost_usd.toFixed(2) : "0.00");
+        if (tokensEl) tokensEl.textContent = formatNumber(data.total_tokens || 0);
+        if (usersEl) usersEl.textContent = formatNumber(data.active_users || 0);
+        var list = document.querySelector(".insights-list");
+        if (list && Array.isArray(data.bullets)) {
+            list.innerHTML = "";
+            if (data.bullets.length) {
+                data.bullets.forEach(function (bullet) {
+                    var li = document.createElement("li");
+                    li.textContent = bullet;
+                    list.appendChild(li);
+                });
+            } else {
+                var fallback = document.createElement("li");
+                fallback.innerHTML = "Run data ingestion (<code>python -m scripts.ingest_data</code>) and refresh the page to see insights.";
+                list.appendChild(fallback);
+            }
+        }
+        var updatedEl = document.getElementById("live-updated");
+        if (updatedEl) {
+            var now = new Date();
+            var t = now.getHours().toString().padStart(2, "0") + ":" + now.getMinutes().toString().padStart(2, "0") + ":" + now.getSeconds().toString().padStart(2, "0");
+            updatedEl.textContent = "Last updated " + t;
+        }
+    }
+
+    function initLiveRefresh() {
+        var data = window.DASHBOARD_DATA;
+        if (!data || typeof data.days !== "number") return;
+        var days = data.days;
+        var LIVE_INTERVAL_MS = 30000;
+
+        function poll() {
+            fetch("/api/live-summary?days=" + days)
+                .then(function (r) { return r.json(); })
+                .then(updateLiveSummary)
+                .catch(function () {});
+        }
+
+        setTimeout(function () {
+            poll();
+            setInterval(poll, LIVE_INTERVAL_MS);
+        }, LIVE_INTERVAL_MS);
+    }
+
     if (typeof Chart !== "undefined") {
         costTrendChart();
         hourlyChart();
@@ -163,4 +219,5 @@
         rolePracticeChart();
     }
     initLoadButton();
+    initLiveRefresh();
 })();
