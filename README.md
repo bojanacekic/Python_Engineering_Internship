@@ -206,11 +206,11 @@ Example: `curl "http://127.0.0.1:8000/api/summary?days=7"`
 
 ## Future Improvements
 
-- **Real-time streaming analytics** — Ingest and aggregate telemetry via a message queue or streaming pipeline
-- **ML-based anomaly detection** — Replace or augment rule-based cost anomalies with learned baselines
-- **Alerting system** — Thresholds on cost, failure rate, or usage with email/Slack notifications
-- **Exports** — CSV/Excel export for top users, trends, and insights
-- **Auth and multi-tenant** — Login and scoping by team or organization
+- **Real-time streaming analytics** — The project currently includes a lightweight near-real-time monitoring demo based on polling `/api/live-summary`. A future evolution would add full streaming infrastructure (e.g. Kafka, WebSockets, or event streaming) for low-latency, high-volume telemetry.
+- **ML-based anomaly detection** — The current implementation uses rule-based cost anomalies; a next step would be to replace or augment this with model-based anomaly detection and learned baselines.
+- **Alerting system** — Configurable thresholds on cost, failure rate, or usage with email/Slack notifications.
+- **Exports** — CSV/Excel export options for top users, trends, and insights.
+- **Auth and multi-tenant** — Authentication and scoping by team or organization.
 
 ---
 
