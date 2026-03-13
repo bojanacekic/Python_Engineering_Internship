@@ -16,6 +16,17 @@ The platform is designed for engineering and product teams who need visibility i
 
 ---
 
+## Data Sources
+
+Telemetry data is **generated using a synthetic data generator** for demonstration purposes. The two main input files are:
+
+- **telemetry_logs.jsonl** — JSONL stream of telemetry events that simulate Claude Code usage: session start, completions, edits, errors, and related event types.
+- **employees.csv** — Employee roster used to enrich analytics with **department** and **role** metadata (e.g. usage by practice, top users by department).
+
+Events are ingested into SQLite and joined to employees where possible; the dashboard and API then report on this combined dataset.
+
+---
+
 ## Key Features
 
 - **Telemetry ingestion** — Ingest JSONL telemetry logs and CSV employee data; supports flat and batched formats with validation and deduplication
